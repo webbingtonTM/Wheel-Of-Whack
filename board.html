@@ -341,10 +341,11 @@
             lab.style.left = `${cxp * 100}%`;
             lab.style.top = `${cyp * 100}%`;
             const deg = (midAngle * 180) / Math.PI;
-            lab.style.transform = `translate(-50%,-50%) rotate(${deg + 90}deg)`;
+            // Rotate container along the radial midline, then rotate inner text tangentially
+            lab.style.transform = `translate(-50%,-50%) rotate(${deg}deg)`;
             const slot = slots[i];
             const bi = slot.bonusItemId && s.bonusItems.find((x) => x.id === slot.bonusItemId);
-            lab.innerHTML = `<div style=\"display:flex;align-items:center;gap:6px;\">${slot.label}${bi ? `<img src=\"${bi.imageDataUrl}\" alt=\"\" style=\"width:18px;height:18px;border-radius:4px;border:1px solid #0005;object-fit:cover;\"/>` : ''}</div>`;
+            lab.innerHTML = `<div class=\"wheel-label-inner\" style=\"transform:rotate(90deg);display:flex;align-items:center;gap:6px;\">${slot.label}${bi ? `<img src=\"${bi.imageDataUrl}\" alt=\"\" style=\"width:18px;height:18px;border-radius:4px;border:1px solid #0005;object-fit:cover;\"/>` : ''}</div>`;
             elWheel.appendChild(lab);
           }
           } else {
@@ -364,7 +365,8 @@
             const midAngle = ((i + 0.5) / N) * 2 * Math.PI;
             const deg = (midAngle * 180) / Math.PI;
             const g = document.createElementNS(ns, 'g');
-            g.setAttribute('transform', `rotate(${deg + 90}, ${cx0}, ${cy0})`);
+            // Align stacked digits along the wedge midline
+            g.setAttribute('transform', `rotate(${deg}, ${cx0}, ${cy0})`);
             const labelStr = String(slots[i].label);
             const chars = labelStr.split('');
             const need = chars.length * baseLineH;

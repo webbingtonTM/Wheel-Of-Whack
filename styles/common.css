@@ -88,6 +88,7 @@ body.angled .view-wheel .pointer{ top: var(--wheel-pointer-offset, -2px) }
 /* Ensure angled view ignores scale so spin remains circular */
 body.angled .view-wheel .wheel-canvas{ transform: rotate(var(--spin-angle, 0deg)) }
 .wheel-label{position:absolute;transform-origin:50% 50%;color:#fff;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.wheel-label-inner{transform-origin:50% 50%}
 .wheel-label.vertical{transform-origin:50% 0%}
 .wheel-label.vertical .stack{display:flex;flex-direction:column;align-items:center;line-height:1;letter-spacing:0;font-weight:700}
 .wheel-label.vertical .ch{display:block}

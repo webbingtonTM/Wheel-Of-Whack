@@ -12,10 +12,11 @@ function deepClone(obj) {
 
 function genId() { return Math.random().toString(36).slice(2, 9); }
 
-// Pointer mapping: 0deg is at 3 o'clock; pointer visually at the top
-// Use 270deg to compensate for canvas rotation direction so the wedge under the
-// pointer matches the computed result index.
-export const POINTER_TOP_DEG = 270;
+// Pointer mapping: CSS conic 0deg is at 3 o'clock.
+// Empirically, the top pointer aligns best with 0deg in this setup because of
+// how the canvas rotation, label transforms, and pointer triangle are composed.
+// Keeping this as a single constant lets us adjust easily if visuals change.
+export const POINTER_TOP_DEG = 0;
 
 export class State {
   constructor(options = {}) {
