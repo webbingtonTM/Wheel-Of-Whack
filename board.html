@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wheel of Wack — Board</title>
+    <link rel="stylesheet" href="styles/common.css" />
+  </head>
+  <body>
+    <div class="board-shell">
+      <div class="board-header">
+        <div>
+          <strong id="category">Category</strong>
+        </div>
+        <div>
+          <span id="guessed"></span>
+        </div>
+      </div>
+      <div class="board-main">
+        <div id="sessionPicker" style="position:absolute;z-index:5;left:16px;top:60px;background:#101424;border:1px solid #2a2f45;border-radius:8px;padding:8px;display:none">
+          <div style="margin-bottom:6px;color:var(--muted)">Select session</div>
+          <div class="row">
+            <select id="sessionSelect"></select>
+            <button id="loadSessionBtn">Load</button>
+          </div>
+        </div>
+        <div class="views" id="views">
+          <div class="view view-board">
+            <section class="puzzle-area">
+              <div class="puzzle-grid" id="puzzle"></div>
+            </section>
+          </div>
+          <div class="view view-wheel">
+            <section class="puzzle-area">
+              <div class="wheel-frame">
+                <div class="wheel-tilt">
+                  <div class="wheel-canvas" id="wheel"></div>
+                </div>
+                <div class="pointer"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <aside class="players-panel" id="players"></aside>
+      </div>
+    </div>
+    <script type="module">
+      import { State, currentPuzzleText, listSessions, loadSessionState } from './scripts/state.js';
+
+      function getQueryParam(name) {
+        const m = new URLSearchParams(location.search).get(name);
+        return m || null;
+      }
+
+      const sessionFromUrl = getQueryParam('session');
+      const state = new State(sessionFromUrl ? { sessionId: sessionFromUrl } : {});
+      const elPuzzle = document.getElementById('puzzle');
+      const elPlayers = document.getElementById('players');
+      const elCategory = document.getElementById('category');
+      const elGuessed = document.getElementById('guessed');
+      const elViews = document.getElementById('views');
+      const elWheel = document.getElementById('wheel');
+      const elPicker = document.getElementById('sessionPicker');
+      const elSessionSelect = document.getElementById('sessionSelect');
+      const elLoadSessionBtn = document.getElementById('loadSessionBtn');
+
+      // Animation state for letter reveals
+      let prevRevealed = new Set();
+      let anim = null; // { letter, indices: number[], shown: number, justIndex: number, preDelayDone: bool }
+      let animTimer = null;
+      let lastRevealSeenAt = 0;
+
+      function stopAnim(){ if (animTimer) { clearTimeout(animTimer); animTimer=null; } }
+
+      function scheduleNextStep(delay){
+        stopAnim();
+        animTimer = setTimeout(()=>{
+          if (!anim) return;
+          if (!anim.preDelayDone){
+            anim.preDelayDone = true;
+            renderAll(state.get());
+            scheduleNextStep(180);
+            return;
+          }
+          if (anim.shown < anim.indices.length){
+            anim.justIndex = anim.indices[anim.shown];
+            anim.shown++;
+            renderAll(state.get());
+            scheduleNextStep(180);
+          } else {
+            // done; commit letter to prevRevealed and clear anim
+            prevRevealed.add(anim.letter);
+            anim = null;
+            renderAll(state.get());
+            // If more letters were added meanwhile, they will get picked up next render
+          }
+        }, delay);
+      }
+
+      function maybeStartAnimation(s){
+        if (anim) return;
+        // Prefer explicit lastReveal metadata for robustness across OBS reloads
+        const meta = (s.ui && s.ui.lastReveal) ? s.ui.lastReveal : null;
+        let letterAdded = null;
+        let stamp = 0;
+        if (meta && meta.letter) {
+          letterAdded = String(meta.letter).toUpperCase();
+          stamp = parseInt(meta.at || 0, 10) || Date.now();
+          if (stamp <= lastRevealSeenAt) letterAdded = null; // already handled
+        }
+        // Fallback to diffing if no meta available
+        if (!letterAdded) {
+          const curr = new Set(s.revealedLetters || []);
+          if (prevRevealed.size === 0 && (s.revealedLetters||[]).length){
+            for (const L of s.revealedLetters) prevRevealed.add(L);
+            return;
+          }
+          for (const L of curr){ if (!prevRevealed.has(L)) { letterAdded = L; break; } }
+          if (!letterAdded) return;
+        }
+        const text = currentPuzzleText(s);
+        const idxs = [];
+        for (let i=0;i<text.length;i++){ if (text[i]===letterAdded) idxs.push(i); }
+        if (!idxs.length){
+          prevRevealed.add(letterAdded);
+          return;
+        }
+        anim = { letter: letterAdded, indices: idxs, shown: 0, justIndex: -1, preDelayDone: false };
+        if (stamp) {
+          lastRevealSeenAt = stamp;
+          try {
+            const sid = (s.settings && s.settings.sessionId) ? s.settings.sessionId : '';
+            if (sid) sessionStorage.setItem('wack-lastReveal-' + sid, String(lastRevealSeenAt));
+          } catch {}
+        }
+        // Start with a short pre-reveal blue highlight
+        scheduleNextStep(250);
+      }
+
+      function measureTileWidth(){
+        // Create a temporary tile to measure full width including borders
+        const tmp = document.createElement('div');
+        tmp.className = 'tile';
+        tmp.style.visibility = 'hidden';
+        tmp.style.position = 'absolute';
+        tmp.textContent = '';
+        elPuzzle.appendChild(tmp);
+        const w = tmp.offsetWidth;
+        elPuzzle.removeChild(tmp);
+        return Math.max(1, w);
+      }
+
+      function layoutRowsForText(text, maxCols){
+        const rows = [];
+        let cur = [];
+        const pushRow = () => { if (cur.length){ rows.push(cur); cur = []; } };
+        const isLetter = (c) => /^[A-Z]$/.test(c);
+        let i = 0;
+        while (i < text.length){
+          if (isLetter(text[i])){
+            // collect a word
+            let j = i; while (j < text.length && isLetter(text[j])) j++;
+            const len = j - i;
+            if (cur.length > 0 && (cur.length + len) > maxCols){ pushRow(); }
+            for (let k=i;k<j;k++) cur.push(k);
+            i = j;
+          } else {
+            // non-letter; treat as single tile (space/punct)
+            if (text[i] === ' '){
+              // avoid leading spaces
+              if (cur.length === 0){ i++; continue; }
+            }
+            if (cur.length >= maxCols){ pushRow(); }
+            if (cur.length === maxCols){ pushRow(); }
+            cur.push(i);
+            i++;
+          }
+          if (cur.length >= maxCols){ pushRow(); }
+        }
+        pushRow();
+        return rows;
+      }
+
+      function renderPuzzle(s) {
+        const text = currentPuzzleText(s);
+        elCategory.textContent = s.puzzles[s.currentPuzzleIndex]?.category || '';
+        elGuessed.textContent = s.guessedLetters.length ? `Guessed: ${s.guessedLetters.join(' ')}` : '';
+        elPuzzle.innerHTML = '';
+        const revealed = new Set(s.revealedLetters || []);
+        const revealBlockedLetter = anim ? anim.letter : null;
+        if (revealBlockedLetter) revealed.delete(revealBlockedLetter);
+        const gap = 8; // keep in sync with CSS
+        const tileW = measureTileWidth();
+        const avail = Math.max(1, elPuzzle.clientWidth || 800);
+        const maxCols = Math.max(1, Math.floor((avail + gap) / (tileW + gap)));
+        const rows = layoutRowsForText(text, maxCols);
+        for (const row of rows){
+          const rowEl = document.createElement('div');
+          rowEl.className = 'puzzle-row';
+          for (const i of row){
+            const ch = text[i];
+            const isLetter = /[A-Z]/.test(ch);
+            if (!isLetter && (s.settings && s.settings.realisticBoard)) {
+              // In realistic board mode: no tile slots for spaces; show punctuation directly
+              if (ch === ' ') {
+                const gap = document.createElement('div');
+                gap.className = 'space-gap';
+                rowEl.appendChild(gap);
+              } else {
+                const sp = document.createElement('span');
+                sp.className = 'punct';
+                sp.textContent = ch;
+                rowEl.appendChild(sp);
+              }
+              continue;
+            }
+            const tile = document.createElement('div');
+            if (!isLetter) {
+              tile.className = 'tile blank';
+              tile.textContent = ch === ' ' ? '' : ch;
+            } else if (anim && ch === revealBlockedLetter) {
+              const pos = anim.indices.indexOf(i);
+              if (pos > -1 && pos < anim.shown){
+                tile.className = 'tile revealed' + (i===anim.justIndex ? ' revealing' : '');
+                tile.textContent = ch;
+              } else {
+                tile.className = 'tile pre-reveal';
+                tile.textContent = '';
+              }
+            } else if (revealed.has(ch)) {
+              tile.className = 'tile revealed';
+              tile.textContent = ch;
+            } else {
+              tile.className = 'tile';
+              tile.textContent = '';
+            }
+            rowEl.appendChild(tile);
+          }
+          elPuzzle.appendChild(rowEl);
+        }
+      }
+
+      function renderPlayers(s) {
+        elPlayers.innerHTML = '';
+        for (const p of s.players) {
+          const div = document.createElement('div');
+          div.className = 'player' + (p.id === s.activePlayerId ? ' active' : '');
+          const left = document.createElement('div');
+          left.innerHTML = `<strong>${p.name}</strong><div style="color:var(--muted);font-size:12px;">Score: ${p.score}</div>`;
+          const inv = document.createElement('div');
+          inv.className = 'inventory';
+          for (const b of p.inventory) {
+            const bi = s.bonusItems.find((x) => x.id === b);
+            if (!bi) continue;
+            const img = document.createElement('img');
+            img.src = bi.imageDataUrl;
+            img.title = bi.name;
+            inv.appendChild(img);
+          }
+          div.appendChild(left);
+          div.appendChild(inv);
+          elPlayers.appendChild(div);
+        }
+      }
+
+      function renderViews(s) {
+        elViews.classList.toggle('show-wheel', !!s.settings.showWheel);
+        document.body.classList.toggle('angled', !!s.settings.angledView);
+        document.body.classList.toggle('realistic-wheel', !!s.settings.realisticWheel);
+        document.body.classList.toggle('realistic-board', !!s.settings.realisticBoard);
+        // Apply angle preset variables for wheel
+        const preset = (s.settings && s.settings.angledPreset) ? s.settings.angledPreset : 'standard';
+        const map = {
+          subtle:   { ratio: 0.42, persp: '1100px', translate: '-8%',  rotX: '32deg', top: '2px' },
+          standard: { ratio: 0.38, persp: '900px',  translate: '-12%', rotX: '40deg', top: '-2px' },
+          dramatic: { ratio: 0.34, persp: '800px',  translate: '-14%', rotX: '48deg', top: '-4px' },
+          extreme:  { ratio: 0.30, persp: '700px',  translate: '-18%', rotX: '56deg', top: '-6px' },
+        };
+        const p = map[preset] || map.standard;
+        document.body.style.setProperty('--wheel-angled-frame-ratio', String(p.ratio));
+        document.body.style.setProperty('--wheel-angled-perspective', p.persp);
+        document.body.style.setProperty('--wheel-angled-translateY', p.translate);
+        document.body.style.setProperty('--wheel-angled-rotateX', p.rotX);
+        const zoom = s.settings.angledView ? 1 : (s.settings.wheelZoom || 1);
+        document.body.style.setProperty('--wheel-scale', String(zoom));
+        const arrow = (s.settings && (typeof s.settings.wheelPointerOffset!== 'undefined')) ? s.settings.wheelPointerOffset : 0;
+        document.body.style.setProperty('--wheel-pointer-offset', `${arrow}px`);
+      }
+
+      function renderWheel(s) {
+        const { slots } = s.wheel;
+        const N = slots.length || 1;
+        // Do not clear children here; labels may be memoized between renders
+        // Draw wedges via conic-gradient background
+        const stops = [];
+        for (let i = 0; i < N; i++) {
+          const a0 = (i / N) * 360;
+          const a1 = ((i + 1) / N) * 360;
+          const color = slots[i].color || `hsl(${(i * 360) / N},60%,40%)`;
+          stops.push(`${color} ${a0}deg ${a1}deg`);
+        }
+        elWheel.style.background = `conic-gradient(${stops.join(',')})`;
+        // Apply spin angle via CSS var so base transforms remain intact (angled view)
+        const spin = s.wheelSpin || {};
+        elWheel.style.transition = spin.spinning ? 'transform 4.5s cubic-bezier(0.22, 0.61, 0.36, 1)' : 'transform 0s linear';
+        elWheel.style.setProperty('--spin-angle', `${spin.angle || 0}deg`);
+        // Labels (memoized rebuild)
+        const labelsVertical = !!(s.settings && s.settings.wheelVerticalLabels);
+        const labelKey = JSON.stringify({
+          v: labelsVertical,
+          rw: !!(s.settings && s.settings.realisticWheel),
+          n: N,
+          L: slots.map(sl=>sl.label)
+        });
+        if (!renderWheel.lastKey || renderWheel.lastKey !== labelKey) {
+          // remove previous labels/overlay
+          elWheel.querySelectorAll('.wheel-label').forEach(n=>n.remove());
+          const prevSvg = elWheel.querySelector('svg.wheel-svg');
+          if (prevSvg) prevSvg.remove();
+
+          if (!labelsVertical) {
+          for (let i = 0; i < N; i++) {
+            const lab = document.createElement('div');
+            lab.className = 'wheel-label';
+            const midAngle = ((i + 0.5) / N) * 2 * Math.PI;
+            const radius = 0.35;
+            const cxp = 0.5 + Math.cos(midAngle) * radius;
+            const cyp = 0.5 + Math.sin(midAngle) * radius;
+            lab.style.left = `${cxp * 100}%`;
+            lab.style.top = `${cyp * 100}%`;
+            const deg = (midAngle * 180) / Math.PI;
+            lab.style.transform = `translate(-50%,-50%) rotate(${deg + 90}deg)`;
+            const slot = slots[i];
+            const bi = slot.bonusItemId && s.bonusItems.find((x) => x.id === slot.bonusItemId);
+            lab.innerHTML = `<div style=\"display:flex;align-items:center;gap:6px;\">${slot.label}${bi ? `<img src=\"${bi.imageDataUrl}\" alt=\"\" style=\"width:18px;height:18px;border-radius:4px;border:1px solid #0005;object-fit:cover;\"/>` : ''}</div>`;
+            elWheel.appendChild(lab);
+          }
+          } else {
+          const ns = 'http://www.w3.org/2000/svg';
+          const svg = document.createElementNS(ns, 'svg');
+          svg.setAttribute('viewBox', '0 0 1000 1000');
+          svg.setAttribute('class', 'wheel-svg');
+          const cx0 = 500, cy0 = 500;
+          const outerR = 470;
+          const realistic = !!(s.settings && s.settings.realisticWheel);
+          const centerInset = realistic ? 0.29 : 0.22;
+          const innerR = (1 - 2 * centerInset) * 500;
+          const padding = 10;
+          const available = Math.max(40, outerR - (innerR + padding));
+          const baseFont = 34, baseLineH = 42;
+          for (let i = 0; i < N; i++) {
+            const midAngle = ((i + 0.5) / N) * 2 * Math.PI;
+            const deg = (midAngle * 180) / Math.PI;
+            const g = document.createElementNS(ns, 'g');
+            g.setAttribute('transform', `rotate(${deg}, ${cx0}, ${cy0})`);
+            const labelStr = String(slots[i].label);
+            const chars = labelStr.split('');
+            const need = chars.length * baseLineH;
+            const scale = Math.min(1, available / need);
+            const fSize = Math.max(20, Math.round(baseFont * scale));
+            const lineH = Math.max(24, Math.round(baseLineH * scale));
+            for (let j = 0; j < chars.length; j++) {
+              const t = document.createElementNS(ns, 'text');
+              t.setAttribute('x', String(cx0));
+              t.setAttribute('y', String(cy0 - outerR + j * lineH));
+              t.setAttribute('text-anchor', 'middle');
+              t.setAttribute('dominant-baseline', 'hanging');
+              t.setAttribute('font-size', String(fSize));
+              t.textContent = chars[j];
+              g.appendChild(t);
+            }
+            svg.appendChild(g);
+          }
+          elWheel.appendChild(svg);
+          }
+          renderWheel.lastKey = labelKey;
+        }
+      }
+
+      function renderAll(s) {
+        renderPuzzle(s);
+        renderPlayers(s);
+        renderViews(s);
+        renderWheel(s);
+      }
+
+      // Restore last seen reveal timestamp (OBS reload safe)
+      try {
+        const sid0 = (state.get().settings && state.get().settings.sessionId) ? state.get().settings.sessionId : '';
+        if (sid0) {
+          const v = sessionStorage.getItem('wack-lastReveal-' + sid0);
+          if (v) lastRevealSeenAt = parseInt(v,10) || 0;
+        }
+      } catch {}
+
+      renderAll(state.get());
+      state.subscribe((s)=>{ maybeStartAnimation(s); renderAll(s); });
+
+      // Session selection on Board when no session specified in URL
+      function refreshSessionOptions() {
+        elSessionSelect.innerHTML = '';
+        const sessions = listSessions();
+        sessions.forEach(sess => {
+          const o = document.createElement('option');
+          o.value = sess.id; o.textContent = sess.name || sess.id;
+          elSessionSelect.appendChild(o);
+        });
+      }
+
+      if (!sessionFromUrl) {
+        refreshSessionOptions();
+        elPicker.style.display = 'block';
+      }
+      elLoadSessionBtn.addEventListener('click', () => {
+        const id = elSessionSelect.value;
+        if (!id) return;
+        const st = loadSessionState(id);
+        if (st) {
+          state.setSessionFilter(id);
+          state.set(st);
+          elPicker.style.display = 'none';
+        }
+      });
+    </script>
+  </body>
+  </html>

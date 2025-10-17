@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create Game — Wheel of Wack</title>
+    <link rel="stylesheet" href="styles/common.css" />
+  </head>
+  <body>
+    <div class="admin-shell" style="grid-template-columns:420px 1fr">
+      <aside class="sidebar">
+        <div class="section">
+          <h3>Game Details</h3>
+          <div class="row">
+            <label><span>Game Name</span>
+              <input type="text" id="gameName" placeholder="Friday Night Show" />
+            </label>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Players</h3>
+          <div id="playersList" class="list"></div>
+          <div class="row" style="margin-top:8px;">
+            <input type="text" id="newPlayerName" placeholder="New player name" />
+            <button id="addPlayer">Add</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Puzzles</h3>
+          <div class="row">
+            <input type="text" id="pzCategory" placeholder="Category" />
+            <input type="text" id="pzPhrase" placeholder="Phrase" />
+            <button id="addPuzzle">Add</button>
+          </div>
+          <div id="puzzles" class="list" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <h3>Bonus Items</h3>
+          <div class="row">
+            <input type="text" id="bonusName" placeholder="Name" />
+            <input type="file" id="bonusImage" accept="image/*" />
+            <input type="text" id="bonusEmoji" placeholder="Emoji (optional)" style="width:140px" />
+            <button id="addBonus">Add</button>
+          </div>
+          <div class="row" id="bonusEmojiQuick" style="gap:6px;margin-top:6px"><span style="color:var(--muted);font-size:12px">Quick picks:</span><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="?">?</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button></div>
+          <div id="bonusList" class="list" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <h3>Wheel Slots</h3>
+          <div class="row">
+            <label><span>Count</span>
+              <input type="number" id="slotCount" min="2" max="48" value="8"/>
+            </label>
+            <button id="applySlotCount">Apply</button>
+          </div>
+          <div id="slots" class="list" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <h3>Advanced Settings</h3>
+          <div class="row">
+            <label><span>Spin Duration (ms)</span>
+              <input type="number" id="spinDuration" value="4500" />
+            </label>
+          </div>
+        </div>
+
+      </aside>
+      <main class="content">
+        <div class="section">
+          <h3>Board Preview</h3>
+          <div class="row" id="previewMeta" style="margin-bottom:8px;color:var(--muted)"></div>
+          <div class="puzzle-grid" id="previewGrid"></div>
+        </div>
+
+        <div class="section">
+          <h3>Host Game</h3>
+          <p style="color:var(--muted)">Creates a new active session and opens Admin to manage it.</p>
+          <div class="row" style="margin-top:8px">
+            <button id="hostGame" class="primary">Host Game</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { defaultState, createSession } from './scripts/state.js';
+
+      const elGameName = document.getElementById('gameName');
+      const elPlayersList = document.getElementById('playersList');
+      const elNewPlayerName = document.getElementById('newPlayerName');
+      const elAddPlayer = document.getElementById('addPlayer');
+      const elPzCategory = document.getElementById('pzCategory');
+      const elPzPhrase = document.getElementById('pzPhrase');
+      const elAddPuzzle = document.getElementById('addPuzzle');
+      const elPuzzles = document.getElementById('puzzles');
+      const elBonusName = document.getElementById('bonusName');
+      const elBonusImage = document.getElementById('bonusImage');
+      const elBonusEmoji = document.getElementById('bonusEmoji');
+      const elBonusEmojiQuick = document.getElementById('bonusEmojiQuick');
+      const elAddBonus = document.getElementById('addBonus');
+      const elBonusList = document.getElementById('bonusList');
+      const elSlotCount = document.getElementById('slotCount');
+      const elApplySlotCount = document.getElementById('applySlotCount');
+      const elSlots = document.getElementById('slots');
+      const elHostGame = document.getElementById('hostGame');
+      const elPreviewGrid = document.getElementById('previewGrid');
+      const elPreviewMeta = document.getElementById('previewMeta');
+      const elSpinDuration = document.getElementById('spinDuration');
+
+      // Local working model for the game definition
+      const model = defaultState();
+      model.players = [];
+      model.puzzles = [];
+      model.bonusItems = [];
+      model.wheel.slots = [
+        { label: '500', color: '#3a4b8f' },
+        { label: '700', color: '#5a7cf0' },
+        { label: 'Bankrupt', color: '#8f3a3a' },
+        { label: '600', color: '#3a8f7b' },
+        { label: '900', color: '#8f7a3a' },
+        { label: 'Lose Turn', color: '#7a3a8f' },
+        { label: '800', color: '#3a8f88' },
+        { label: '650', color: '#4f5f92' },
+      ];
+      model._previewIndex = 0;
+
+      function renderPlayers(){
+        elPlayersList.innerHTML = '';
+        model.players.forEach((p, idx)=>{
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          const row = document.createElement('div'); row.className = 'row';
+          const name = document.createElement('input'); name.type='text'; name.value=p.name;
+          name.addEventListener('change', ()=>{ model.players[idx].name = name.value || `Player ${idx+1}`; renderPlayers(); });
+          const del = document.createElement('button'); del.className='danger'; del.textContent='Remove';
+          del.addEventListener('click', ()=>{ model.players.splice(idx,1); renderPlayers(); });
+          row.appendChild(name); row.appendChild(del);
+          div.appendChild(row);
+          elPlayersList.appendChild(div);
+        });
+      }
+      function renderPuzzles(){
+        elPuzzles.innerHTML = '';
+        model.puzzles.forEach((pz, idx)=>{
+          const div = document.createElement('div'); div.className='list-item';
+          div.innerHTML = `<div class="row" style="justify-content:space-between;width:100%"><div><strong>${pz.category}</strong> â€” ${pz.phrase}</div><div style="display:flex;gap:6px"><button data-act="preview" data-i="${idx}">Preview</button><button data-act="remove" data-i="${idx}" class="danger">Remove</button></div></div>`;
+          div.querySelector('button[data-act="preview"]').addEventListener('click', ()=>{ model._previewIndex = idx; renderPreview(); });
+          div.querySelector('button[data-act="remove"]').addEventListener('click', ()=>{ model.puzzles.splice(idx,1); if (model._previewIndex===idx) model._previewIndex=0; renderPuzzles(); renderPreview(); });
+          elPuzzles.appendChild(div);
+        });
+      }
+      function renderBonus(){
+        elBonusList.innerHTML = '';
+        model.bonusItems.forEach((b, idx)=>{
+          const div = document.createElement('div'); div.className='list-item';
+          div.innerHTML = `<div class="row"><img src="${b.imageDataUrl}" style="width:32px;height:32px;border-radius:6px;border:1px solid #2a2f45;object-fit:cover"/> <strong>${b.name}</strong> <button data-i="${idx}" class="danger">Remove</button></div>`;
+          div.querySelector('button').addEventListener('click', ()=>{ model.bonusItems.splice(idx,1); renderBonus(); });
+          elBonusList.appendChild(div);
+        });
+      }
+      function renderSlots(){
+        elSlotCount.value = model.wheel.slots.length;
+        elSlots.innerHTML = '';
+        model.wheel.slots.forEach((slot, idx)=>{
+          const div = document.createElement('div'); div.className='list-item';
+          const row = document.createElement('div'); row.className='row';
+          const label = document.createElement('input'); label.type='text'; label.value=slot.label;
+          const color = document.createElement('input'); color.type='color'; color.value=slot.color;
+          const save = document.createElement('button'); save.textContent='Save';
+          save.addEventListener('click', ()=>{ model.wheel.slots[idx] = { label: label.value||'', color: color.value||'#3a4b8f' }; renderSlots(); });
+          row.appendChild(label); row.appendChild(color); row.appendChild(save);
+          div.appendChild(row);
+          elSlots.appendChild(div);
+        });
+      }
+
+      elAddPlayer.addEventListener('click', ()=>{
+        const name = (elNewPlayerName.value||'').trim();
+        model.players.push({ id: Math.random().toString(36).slice(2,9), name: name || `Player ${model.players.length+1}`, score: 0, inventory: []});
+        elNewPlayerName.value='';
+        renderPlayers();
+      });
+      elAddPuzzle.addEventListener('click', ()=>{
+        const cat = (elPzCategory.value||'').trim();
+        const phr = (elPzPhrase.value||'').trim().toUpperCase();
+        if (!cat || !phr) return;
+        model.puzzles.push({ category: cat, phrase: phr });
+        elPzCategory.value=''; elPzPhrase.value='';
+        model._previewIndex = model.puzzles.length - 1;
+        renderPuzzles();
+        renderPreview();
+      });
+      elAddBonus.addEventListener('click', async ()=>{
+        const name = (elBonusName.value||'').trim();
+        const file = (elBonusImage.files && elBonusImage.files[0]) ? elBonusImage.files[0] : null;
+        const emoji = (elBonusEmoji.value||'').trim();
+        if (!name) return;
+        let url = '';
+        if (file) {
+          url = await fileToDataUrl(file);
+        } else if (emoji) {
+          url = emojiToDataUrl(emoji, 64);
+        } else {
+          return;
+        }
+        model.bonusItems.push({ id: Math.random().toString(36).slice(2,9), name, imageDataUrl: url });
+        elBonusName.value=''; elBonusImage.value=''; elBonusEmoji.value='';
+        renderBonus();
+      });
+      elApplySlotCount.addEventListener('click', ()=>{
+        const n = Math.max(2, Math.min(48, parseInt(elSlotCount.value||'0',10) || 0));
+        const cur = model.wheel.slots;
+        model.wheel.slots = Array.from({length:n}, (_,i)=> cur[i] || { label: String(500 + i*50), color: `hsl(${(i*360/n).toFixed(0)},60%,40%)`});
+        renderSlots();
+      });
+      elSpinDuration.addEventListener('change', ()=>{
+        // Store as a hint in model (Admin can use later if desired)
+        model._spinDuration = parseInt(elSpinDuration.value||'4500',10) || 4500;
+      });
+
+      elHostGame.addEventListener('click', ()=>{
+        const name = (elGameName.value||'').trim() || 'Untitled Game';
+        const base = defaultState();
+        base.players = model.players;
+        base.puzzles = model.puzzles;
+        base.bonusItems = model.bonusItems;
+        base.wheel = model.wheel;
+        base.activePlayerId = base.players[0] ? base.players[0].id : null;
+        // spin duration hint can be extended into state.settings later if needed
+        const sessionId = createSession(name, base);
+        window.location.href = 'admin.html';
+      });
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function emojiToDataUrl(char, size=64) {
+        const safe = (char || '').substring(0,2);
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>`+
+                    `<rect width='100%' height='100%' fill='transparent'/>`+
+                    `<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='${Math.floor(size*0.8)}'>${safe}</text>`+
+                    `</svg>`;
+        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      }
+
+      elBonusEmojiQuick.addEventListener('click', (e)=>{
+        const t = e.target;
+        if (t && t.tagName === 'BUTTON' && t.dataset.emo) {
+          elBonusEmoji.value = t.dataset.emo;
+        }
+      });
+
+      function renderPreview(){
+        elPreviewGrid.innerHTML = '';
+        const idx = (typeof model._previewIndex === 'number') ? model._previewIndex : 0;
+        const pz = model.puzzles[idx];
+        const cat = pz ? pz.category : '';
+        const phrase = pz ? pz.phrase : 'ADD A PUZZLE TO PREVIEW';
+        elPreviewMeta.textContent = cat ? `Category: ${cat}` : 'No puzzle selected';
+        const text = phrase.toUpperCase();
+        for (const ch of text) {
+          const tile = document.createElement('div');
+          if (!/[A-Z]/.test(ch)) {
+            tile.className = 'tile blank';
+            tile.textContent = ch === ' ' ? '' : ch;
+          } else {
+            tile.className = 'tile';
+            tile.textContent = '';
+          }
+          elPreviewGrid.appendChild(tile);
+        }
+      }
+
+      // Initial render
+      renderPlayers();
+      renderPuzzles();
+      renderBonus();
+      renderSlots();
+      renderPreview();
+    </script>
+  </body>
+  </html>
+
+

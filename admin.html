@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wheel of Wack — Admin</title>
+    <link rel="stylesheet" href="styles/common.css" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <aside class="sidebar">
+        <div class="section">
+          <h3>Sessions</h3>
+          <div class="row">
+            <select id="sessionSelect"></select>
+            <button id="loadSession">Load</button>
+            <button id="deleteSession" class="danger">Delete</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <a href="create.html" target="_blank"><button>Open Creator</button></a>
+          </div>
+        </div>
+        <div class="section">
+          <h3>Game Settings</h3>
+          <div class="row">
+            <label><span>Transparent Background (Board)</span>
+              <input type="checkbox" id="transparentBg" />
+            </label>
+            <label><span>Show Wheel (Transition)</span>
+              <input type="checkbox" id="showWheel" />
+            </label>
+          </div>
+
+          <details style="margin-top:8px">
+            <summary style="cursor:pointer">Wheel & Arrow Settings</summary>
+            <div class="row" style="margin-top:8px">
+              <label><span>Angled View</span>
+                <input type="checkbox" id="angledView" />
+              </label>
+              <label><span>Angle Preset</span>
+                <select id="angledPreset">
+                  <option value="subtle">Subtle</option>
+                  <option value="standard">Standard</option>
+                  <option value="dramatic">Dramatic</option>
+                  <option value="extreme">Extreme</option>
+                </select>
+              </label>
+              <label><span>Realistic Wheel</span>
+                <input type="checkbox" id="realisticWheel" />
+              </label>
+              <label><span>Realistic Board</span>
+                <input type="checkbox" id="realisticBoard" />
+              </label>
+              <label><span>Vertical Slot Labels</span>
+                <input type="checkbox" id="verticalLabels" />
+              </label>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <label><span>Wheel Zoom</span>
+                <div class="row" style="gap:6px">
+                  <input type="range" id="wheelZoom" min="0.8" max="1.6" step="0.05" style="width:140px" />
+                  <span id="wheelZoomVal" style="min-width:40px;text-align:right"></span>
+                </div>
+              </label>
+              <label><span>Arrow Offset (px)</span>
+                <div class="row" style="gap:6px">
+                  <input type="range" id="arrowOffset" min="-60" max="60" step="1" style="width:140px" />
+                  <span id="arrowOffsetVal" style="min-width:40px;text-align:right"></span>
+                </div>
+              </label>
+            </div>
+          </details>
+
+          <div class="row" style="margin-top:8px">
+            <button id="openBoard">Open Board (current session)</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Players</h3>
+          <div id="playersList" class="list"></div>
+          <div class="row" style="margin-top:8px;">
+            <input type="text" id="newPlayerName" placeholder="New player name" />
+            <button id="addPlayer">Add</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Active Player</h3>
+          <select id="activePlayer"></select>
+          <div class="row" style="margin-top:8px">
+            <button id="nextPlayer">Next Player</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Guess Letter</h3>
+          <div class="row">
+            <input type="text" id="guessInput" maxlength="1" style="width:64px;text-transform:uppercase" />
+            <button id="guessBtn" class="primary">Reveal</button>
+          </div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap" id="letterButtons"></div>
+        </div>
+
+        <div class="section">
+          <h3>Bonus Items</h3>
+          <div class="row">
+            <input type="text" id="bonusName" placeholder="Name" />
+            <input type="file" id="bonusImage" accept="image/*" />
+            <input type="text" id="bonusEmoji" placeholder="Emoji (optional)" style="width:140px" />
+            <button id="addBonus">Add</button>
+          </div>
+          <div class="row" id="bonusEmojiQuick" style="gap:6px;margin-top:6px">
+            <span style="color:var(--muted);font-size:12px">Quick picks:</span>
+            <button data-emo="🎉">🎉</button>
+            <button data-emo="🍀">🍀</button>
+            <button data-emo="🔥">🔥</button>
+            <button data-emo="⭐">⭐</button>
+            <button data-emo="🍺">🍺</button>
+            <button data-emo="🎯">🎯</button>
+            <button data-emo="💥">💥</button>
+            <button data-emo="🍆">🍆</button>
+          </div>
+          <div id="bonusList" class="list" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <h3>Buy Vowels</h3>
+          <div class="row">
+            <label><span>Player</span>
+              <select id="vowelPlayer"></select>
+            </label>
+            <label><span>Cost per vowel</span>
+              <input type="number" id="vowelCost" value="250" min="0" style="width:100px" />
+            </label>
+          </div>
+          <div class="row" id="vowelButtons" style="margin-top:8px;gap:6px;flex-wrap:wrap"></div>
+        </div>
+
+      </aside>
+      <main class="content">
+        <div class="section">
+          <h3>Puzzles</h3>
+          <div class="row">
+            <input type="text" id="pzCategory" placeholder="Category" />
+            <input type="text" id="pzPhrase" placeholder="Phrase (letters only will hide)" />
+            <button id="addPuzzle">Add Puzzle</button>
+          </div>
+          <div id="puzzles" class="list" style="margin-top:8px"></div>
+          <div class="row" style="margin-top:8px">
+            <button id="nextPuzzle">Next Puzzle</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>Wheel Editor</h3>
+          <div class="row">
+            <label><span>Slots</span>
+              <input type="number" id="slotCount" min="2" max="48" />
+            </label>
+            <button id="applySlotCount">Apply Count</button>
+            <button id="randomizeBonus">Randomize Bonus Items on Number Slots</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="spinWheel" class="primary">Spin Wheel</button>
+            <span id="spinResult" style="color:var(--muted)"></span>
+          </div>
+          <div id="slots" class="list" style="margin-top:8px"></div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      const deepClone = (o) => (typeof structuredClone==='function' ? structuredClone(o) : JSON.parse(JSON.stringify(o)));
+      import {
+        State,
+        revealLetter,
+        setActivePlayer,
+        toggleWheel,
+        toggleTransparent,
+        addBonusItem,
+        awardBonusToPlayer,
+        setPlayers,
+        setWheel,
+        randomizeBonusOnWheel,
+        startSpin,
+        finishSpin,
+        advancePlayer,
+        currentPuzzleText,
+        listSessions,
+        loadSessionState,
+        deleteSession,
+        addPuzzle,
+        setCurrentPuzzle,
+        buyVowel,
+      } from './scripts/state.js';
+
+      const state = new State();
+
+      // Elements
+      const elTransparent = document.getElementById('transparentBg');
+      const elShowWheel = document.getElementById('showWheel');
+      const elAngledView = document.getElementById('angledView');
+      const elAngledPreset = document.getElementById('angledPreset');
+      const elRealisticWheel = document.getElementById('realisticWheel');
+      const elRealisticBoard = document.getElementById('realisticBoard');
+      const elVerticalLabels = document.getElementById('verticalLabels');
+      const elWheelZoom = document.getElementById('wheelZoom');
+      const elWheelZoomVal = document.getElementById('wheelZoomVal');
+      const elArrowOffset = document.getElementById('arrowOffset');
+      const elArrowOffsetVal = document.getElementById('arrowOffsetVal');
+      const elOpenBoard = document.getElementById('openBoard');
+      const elSessionSelect = document.getElementById('sessionSelect');
+      const elLoadSession = document.getElementById('loadSession');
+      const elDeleteSession = document.getElementById('deleteSession');
+      const elPlayersList = document.getElementById('playersList');
+      const elNewPlayerName = document.getElementById('newPlayerName');
+      const elAddPlayer = document.getElementById('addPlayer');
+      const elActivePlayer = document.getElementById('activePlayer');
+      const elNextPlayer = document.getElementById('nextPlayer');
+      const elGuessInput = document.getElementById('guessInput');
+      const elGuessBtn = document.getElementById('guessBtn');
+      const elLetterButtons = document.getElementById('letterButtons');
+      const elBonusName = document.getElementById('bonusName');
+      const elBonusImage = document.getElementById('bonusImage');
+      const elBonusEmoji = document.getElementById('bonusEmoji');
+      const elBonusEmojiQuick = document.getElementById('bonusEmojiQuick');
+      const elAddBonus = document.getElementById('addBonus');
+      const elBonusList = document.getElementById('bonusList');
+      const elVowelPlayer = document.getElementById('vowelPlayer');
+      const elVowelCost = document.getElementById('vowelCost');
+      const elVowelButtons = document.getElementById('vowelButtons');
+      const elPzCategory = document.getElementById('pzCategory');
+      const elPzPhrase = document.getElementById('pzPhrase');
+      const elAddPuzzle = document.getElementById('addPuzzle');
+      const elPuzzles = document.getElementById('puzzles');
+      const elNextPuzzle = document.getElementById('nextPuzzle');
+      const elSlotCount = document.getElementById('slotCount');
+      const elApplySlotCount = document.getElementById('applySlotCount');
+      const elRandomizeBonus = document.getElementById('randomizeBonus');
+      const elSlots = document.getElementById('slots');
+      const elSpinWheel = document.getElementById('spinWheel');
+      const elSpinResult = document.getElementById('spinResult');
+
+      function renderSettings(s) {
+        elTransparent.checked = !!s.settings.transparentBg;
+        elShowWheel.checked = !!s.settings.showWheel;
+        elAngledView.checked = !!s.settings.angledView;
+        elRealisticWheel.checked = !!s.settings.realisticWheel;
+        elRealisticBoard.checked = !!s.settings.realisticBoard;
+        elAngledPreset.value = s.settings.angledPreset || 'standard';
+        const z = Number(s.settings.wheelZoom || 1).toFixed(2);
+        elWheelZoom.value = z;
+        elWheelZoomVal.textContent = `${z}x`;
+        const ao = Math.round(s.settings.wheelPointerOffset || 0);
+        elArrowOffset.value = ao;
+        elArrowOffsetVal.textContent = `${ao}px`;
+        elVerticalLabels.checked = !!s.settings.wheelVerticalLabels;
+      }
+
+      function renderSessionsUI() {
+        const sessions = listSessions();
+        const curId = state.get().settings.sessionId;
+        elSessionSelect.innerHTML = '';
+        sessions.forEach((sess)=>{
+          const o = document.createElement('option');
+          o.value = sess.id;
+          o.textContent = sess.name || sess.id;
+          if (sess.id === curId) o.selected = true;
+          elSessionSelect.appendChild(o);
+        });
+      }
+
+      function renderPlayers(s) {
+        elPlayersList.innerHTML = '';
+        s.players.forEach((p, idx) => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          const row = document.createElement('div');
+          row.className = 'row';
+          const name = document.createElement('input');
+          name.type = 'text';
+          name.value = p.name;
+          name.addEventListener('change', () => {
+            const next = deepClone(s.players);
+            next[idx].name = name.value || `Player ${idx+1}`;
+            state.set((st)=> setPlayers(st, next));
+          });
+          const score = document.createElement('input');
+          score.type = 'number';
+          score.value = p.score;
+          score.style.width='100px';
+          score.addEventListener('change', () => {
+            const next = deepClone(s.players);
+            next[idx].score = parseInt(score.value||'0',10) || 0;
+            state.set((st)=> setPlayers(st, next));
+          });
+          const del = document.createElement('button');
+          del.className = 'danger';
+          del.textContent = 'Remove';
+          del.addEventListener('click', () => {
+            const next = s.players.filter(x => x.id !== p.id);
+            state.set((st)=> setPlayers(st, next));
+          });
+          row.appendChild(name);
+          row.appendChild(score);
+          row.appendChild(del);
+          div.appendChild(row);
+
+          // Award bonus select
+          const award = document.createElement('div');
+          award.className = 'row';
+          const sel = document.createElement('select');
+          const none = document.createElement('option');
+          none.value = '';
+          none.textContent = 'Select bonus to award';
+          sel.appendChild(none);
+          s.bonusItems.forEach((b) => {
+            const o = document.createElement('option');
+            o.value = b.id;
+            o.textContent = b.name;
+            sel.appendChild(o);
+          });
+          const btn = document.createElement('button');
+          btn.textContent = 'Give Bonus';
+          btn.addEventListener('click', () => {
+            if (!sel.value) return;
+            state.set((st)=> awardBonusToPlayer(st, p.id, sel.value));
+            sel.value = '';
+          });
+          award.appendChild(sel);
+          award.appendChild(btn);
+          div.appendChild(award);
+
+          elPlayersList.appendChild(div);
+        });
+
+        // Active player dropdown
+        elActivePlayer.innerHTML = '';
+        s.players.forEach((p) => {
+          const o = document.createElement('option');
+          o.value = p.id; o.textContent = p.name;
+          if (p.id === s.activePlayerId) o.selected = true;
+          elActivePlayer.appendChild(o);
+        });
+
+        // Vowel buyer dropdown (defaults to active player)
+        elVowelPlayer.innerHTML = '';
+        s.players.forEach((p) => {
+          const o = document.createElement('option');
+          o.value = p.id; o.textContent = `${p.name} (Score: ${p.score})`;
+          if (p.id === s.activePlayerId) o.selected = true;
+          elVowelPlayer.appendChild(o);
+        });
+      }
+
+      function renderLetters(s) {
+        elLetterButtons.innerHTML = '';
+        const vowels = new Set(['A','E','I','O','U']);
+        for (let i=65;i<=90;i++){
+          const L = String.fromCharCode(i);
+          if (vowels.has(L)) continue; // exclude vowels from quick-guess buttons
+          const b = document.createElement('button');
+          b.textContent = L;
+          b.disabled = s.guessedLetters.includes(L);
+          b.addEventListener('click', () => {
+            elGuessInput.value = L;
+            elGuessBtn.click();
+          });
+          elLetterButtons.appendChild(b);
+        }
+      }
+
+      function renderVowelSection(s) {
+        elVowelButtons.innerHTML = '';
+        const vowels = ['A','E','I','O','U'];
+        const buyerId = elVowelPlayer.value || s.activePlayerId || (s.players[0] && s.players[0].id) || '';
+        const buyer = s.players.find(p=>p.id===buyerId);
+        const cost = Math.max(0, parseInt(elVowelCost.value||'250',10) || 250);
+        vowels.forEach(V => {
+          const b = document.createElement('button');
+          b.textContent = V;
+          const already = s.guessedLetters.includes(V);
+          const enough = buyer ? (buyer.score >= cost) : false;
+          b.disabled = already || !enough;
+          b.title = !enough ? 'Insufficient score' : (already ? 'Already revealed' : '');
+          b.addEventListener('click', () => {
+            const pid = elVowelPlayer.value || s.activePlayerId;
+            state.set(st => buyVowel(st, pid, V, cost));
+          });
+          elVowelButtons.appendChild(b);
+        });
+      }
+
+      function renderBonus(s) {
+        elBonusList.innerHTML = '';
+        s.bonusItems.forEach((b) => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          div.innerHTML = `<div class="row"><img src="${b.imageDataUrl}" style="width:32px;height:32px;border-radius:6px;border:1px solid #2a2f45;object-fit:cover"/> <strong>${b.name}</strong></div>`;
+          elBonusList.appendChild(div);
+        });
+      }
+
+      function renderPuzzles(s) {
+        elPuzzles.innerHTML = '';
+        s.puzzles.forEach((p, idx) => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          const isCur = idx===s.currentPuzzleIndex;
+          div.innerHTML = `<div class="row" style="justify-content:space-between;width:100%"><div><strong>${p.category}</strong> — ${p.phrase}</div><div>${isCur?'<span style=\"color:var(--acc)\">Current</span>':`<button data-i="${idx}">Set Current</button>`}</div></div>`;
+          if (!isCur) {
+            div.querySelector('button')?.addEventListener('click', (e)=>{
+              const i = parseInt(e.currentTarget.getAttribute('data-i'),10);
+              state.set((st)=> setCurrentPuzzle(st, i));
+            });
+          }
+          elPuzzles.appendChild(div);
+        });
+      }
+
+      function renderWheel(s) {
+        elSlotCount.value = s.wheel.slots.length;
+        elSlots.innerHTML = '';
+        // Spin state/result
+        if (s.wheelSpin?.spinning) {
+          elSpinResult.textContent = 'Spinning...';
+          elSpinWheel.disabled = true;
+        } else if (s.wheelSpin?.resultLabel) {
+          elSpinResult.textContent = `Result: ${s.wheelSpin.resultLabel}`;
+          elSpinWheel.disabled = false;
+        } else {
+          elSpinResult.textContent = '';
+          elSpinWheel.disabled = false;
+        }
+        s.wheel.slots.forEach((slot, idx) => {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          const row1 = document.createElement('div');
+          row1.className = 'row';
+          const label = document.createElement('input');
+          label.type = 'text'; label.value = slot.label || '';
+          const color = document.createElement('input');
+          color.type = 'color'; color.value = slot.color || '#3a4b8f';
+          const selBonus = document.createElement('select');
+          const optNone = document.createElement('option');
+          optNone.value=''; optNone.textContent='No bonus';
+          selBonus.appendChild(optNone);
+          state.get().bonusItems.forEach((b)=>{
+            const o = document.createElement('option');
+            o.value=b.id; o.textContent=b.name;
+            if (slot.bonusItemId===b.id) o.selected=true;
+            selBonus.appendChild(o);
+          });
+          const save = document.createElement('button');
+          save.textContent = 'Save';
+          save.addEventListener('click', () => {
+            const nextWheel = deepClone(state.get().wheel);
+            nextWheel.slots[idx] = {
+              label: label.value || '',
+              color: color.value || '#3a4b8f',
+              bonusItemId: selBonus.value || undefined,
+            };
+            state.set((st)=> setWheel(st, nextWheel));
+          });
+          row1.appendChild(label);
+          row1.appendChild(color);
+          row1.appendChild(selBonus);
+          row1.appendChild(save);
+          div.appendChild(row1);
+          elSlots.appendChild(div);
+        });
+      }
+
+      // Events
+      elTransparent.addEventListener('change', () => {
+        state.set((s)=> toggleTransparent(s, elTransparent.checked));
+      });
+      elShowWheel.addEventListener('change', () => {
+        state.set((s)=> toggleWheel(s, elShowWheel.checked));
+      });
+      elAngledView.addEventListener('change', () => {
+        state.set((s)=>{ const n = deepClone(s); n.settings.angledView = !!elAngledView.checked; return n; });
+      });
+      elRealisticWheel.addEventListener('change', () => {
+        state.set((s)=>{ const n = deepClone(s); n.settings.realisticWheel = !!elRealisticWheel.checked; return n; });
+      });
+      elRealisticBoard.addEventListener('change', () => {
+        state.set((s)=>{ const n = deepClone(s); n.settings.realisticBoard = !!elRealisticBoard.checked; return n; });
+      });
+      elAngledPreset.addEventListener('change', () => {
+        state.set((s)=>{ const n = deepClone(s); n.settings.angledPreset = elAngledPreset.value || 'standard'; return n; });
+      });
+      elWheelZoom.addEventListener('input', () => {
+        const v = Math.max(0.5, Math.min(2, parseFloat(elWheelZoom.value)||1));
+        elWheelZoomVal.textContent = `${v.toFixed(2)}x`;
+        state.set((s)=>{ const n = deepClone(s); n.settings.wheelZoom = v; return n; });
+      });
+      elArrowOffset.addEventListener('input', () => {
+        const v = Math.max(-100, Math.min(100, parseInt(elArrowOffset.value)||0));
+        elArrowOffsetVal.textContent = `${v}px`;
+        state.set((s)=>{ const n = deepClone(s); n.settings.wheelPointerOffset = v; return n; });
+      });
+      elVerticalLabels.addEventListener('change', () => {
+        state.set((s)=>{ const n = deepClone(s); n.settings.wheelVerticalLabels = !!elVerticalLabels.checked; return n; });
+      });
+      elOpenBoard.addEventListener('click', () => {
+        const sid = state.get().settings.sessionId;
+        const url = sid ? `board.html?session=${encodeURIComponent(sid)}` : 'board.html';
+        window.open(url, '_blank');
+      });
+      elAddPlayer.addEventListener('click', () => {
+        const name = (elNewPlayerName.value || '').trim();
+        const id = Math.random().toString(36).slice(2,9);
+        const players = [...state.get().players, { id, name: name || `Player ${state.get().players.length+1}`, score: 0, inventory: [] }];
+        state.set((st)=> setPlayers(st, players));
+        elNewPlayerName.value = '';
+      });
+      elActivePlayer.addEventListener('change', () => {
+        state.set((st)=> setActivePlayer(st, elActivePlayer.value));
+      });
+      elNextPlayer.addEventListener('click', () => {
+        state.set((st)=> advancePlayer(st, 1));
+      });
+      elGuessBtn.addEventListener('click', () => {
+        const v = (elGuessInput.value || '').toUpperCase();
+        if (!v) return;
+        const s = state.get();
+        const beforeRevealed = new Set(s.revealedLetters);
+        const text = currentPuzzleText(s);
+        let newCount = 0;
+        if (!beforeRevealed.has(v)) {
+          for (const ch of text) if (ch === v) newCount++;
+        }
+        // Apply reveal
+        state.set((st)=> revealLetter(st, v));
+        // Award points if last spin was numeric
+        const spin = s.wheelSpin || {};
+        const slot = (Array.isArray(s.wheel.slots) && Number.isInteger(spin.resultIndex)) ? (s.wheel.slots[spin.resultIndex] || {}) : {};
+        const val = parseInt(slot.label, 10);
+        if (Number.isFinite(val) && newCount > 0) {
+          state.set((st)=>{
+            const next = deepClone(st);
+            const ap = next.players.find((p)=> p.id === next.activePlayerId);
+            if (ap) ap.score += val * newCount;
+            return next;
+          });
+        }
+        elGuessInput.value = '';
+        elGuessInput.focus();
+      });
+      elGuessInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') elGuessBtn.click();
+      });
+      elAddBonus.addEventListener('click', async () => {
+        const name = (elBonusName.value || '').trim();
+        const file = (elBonusImage.files && elBonusImage.files[0]) ? elBonusImage.files[0] : null;
+        const emoji = (elBonusEmoji.value || '').trim();
+        if (!name) return;
+        let url = '';
+        if (file) {
+          url = await fileToDataUrl(file);
+        } else if (emoji) {
+          url = emojiToDataUrl(emoji, 64);
+        } else {
+          return;
+        }
+        const id = Math.random().toString(36).slice(2,9);
+        state.set((st)=> addBonusItem(st, { id, name, imageDataUrl: url }));
+        elBonusName.value = '';
+        elBonusImage.value = '';
+        elBonusEmoji.value = '';
+      });
+      elAddPuzzle.addEventListener('click', () => {
+        const cat = (elPzCategory.value || '').trim();
+        const phr = (elPzPhrase.value || '').trim();
+        if (!cat || !phr) return;
+        state.set((st)=> addPuzzle(st, { category: cat, phrase: phr }, true));
+        elPzCategory.value = '';
+        elPzPhrase.value = '';
+      });
+      elNextPuzzle.addEventListener('click', () => {
+        const s = state.get();
+        if (s.currentPuzzleIndex < s.puzzles.length - 1) {
+          const next = deepClone(s);
+          next.currentPuzzleIndex++;
+          next.revealedLetters = [];
+          next.guessedLetters = [];
+          state.set(next);
+        }
+      });
+      elApplySlotCount.addEventListener('click', () => {
+        const n = Math.max(2, Math.min(48, parseInt(elSlotCount.value||'0',10) || 0));
+        const s = state.get();
+        const cur = s.wheel.slots;
+        const nextSlots = Array.from({length:n}, (_,i)=> cur[i] || {
+          label: String(500 + i*50),
+          color: `hsl(${(i*360/n).toFixed(0)},60%,40%)`
+        });
+        state.set((st)=> setWheel(st, { slots: nextSlots }));
+      });
+      elRandomizeBonus.addEventListener('click', () => {
+        state.set((st)=> randomizeBonusOnWheel(st));
+      });
+      elSpinWheel.addEventListener('click', () => {
+        const durationMs = 4500;
+        state.set((st)=> startSpin(st));
+        setTimeout(() => {
+          state.set((st)=> finishSpin(st));
+        }, durationMs + 50);
+      });
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function emojiToDataUrl(char, size=64) {
+        const safe = (char || '').substring(0,2);
+        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>`+
+                    `<rect width='100%' height='100%' fill='transparent'/>`+
+                    `<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='${Math.floor(size*0.8)}'>${safe}</text>`+
+                    `</svg>`;
+        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      }
+
+      // Quick emoji clicks fill the emoji input
+      elBonusEmojiQuick.addEventListener('click', (e)=>{
+        const t = e.target;
+        if (t && t.tagName === 'BUTTON' && t.dataset.emo) {
+          elBonusEmoji.value = t.dataset.emo;
+        }
+      });
+
+      function renderAll(s){
+        renderSettings(s);
+        renderSessionsUI();
+        renderPlayers(s);
+        renderLetters(s);
+        renderVowelSection(s);
+        renderBonus(s);
+        renderPuzzles(s);
+        renderWheel(s);
+      }
+      renderAll(state.get());
+      state.subscribe(renderAll);
+      elVowelCost.addEventListener('change', ()=> renderVowelSection(state.get()));
+      elVowelPlayer.addEventListener('change', ()=> renderVowelSection(state.get()));
+
+      // Session events
+      elLoadSession.addEventListener('click', () => {
+        const id = elSessionSelect.value;
+        if (!id) return;
+        const st = loadSessionState(id);
+        if (st) state.set(st);
+      });
+      elDeleteSession.addEventListener('click', () => {
+        const id = elSessionSelect.value;
+        if (!id) return;
+        if (confirm('Delete this session?')) {
+          deleteSession(id);
+          renderSessionsUI();
+        }
+      });
+    </script>
+  </body>
+  </html>

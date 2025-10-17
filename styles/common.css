@@ -1,0 +1,124 @@
+:root{
+  --bg:#0b0c10;
+  --panel:#151821;
+  --panel-2:#1d2130;
+  --text:#e6e7eb;
+  --muted:#a1a6b3;
+  --acc:#7aa2f7;
+  --good:#52d273;
+  --warn:#ffb454;
+  --bad:#ff6c6b;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:1000px;margin:32px auto;padding:0 16px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{display:block;background:var(--panel);padding:16px;border-radius:12px;border:1px solid #2a2f45;color:var(--text);text-decoration:none}
+.card:hover{border-color:var(--acc)}
+h1,h2,h3{margin:0 0 12px}
+p{margin:0 0 8px;color:var(--muted)}
+
+/* Admin layout */
+.admin-shell{display:grid;grid-template-columns:360px 1fr;gap:16px;height:100vh}
+.sidebar{background:var(--panel);padding:12px;overflow:auto;border-right:1px solid #2a2f45}
+.content{background:var(--panel-2);padding:12px;overflow:auto}
+.section{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #2a2f45}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+input[type="text"],input[type="number"],textarea,select{background:#0f1320;color:var(--text);border:1px solid #2a2f45;border-radius:8px;padding:8px}
+button{background:#222842;color:var(--text);border:1px solid #2a2f45;border-radius:8px;padding:8px 12px;cursor:pointer}
+button.primary{background:var(--acc);color:#0a0a0a;border-color:#5b87f0}
+button.danger{background:#3a1e25;border-color:#662a36;color:#f7d6db}
+button:disabled{opacity:.6;cursor:not-allowed}
+
+.list{display:grid;gap:8px}
+.list-item{background:#101424;border:1px solid #2a2f45;border-radius:8px;padding:8px}
+
+/* Board */
+.board-shell{height:100vh;display:flex;flex-direction:column}
+.board-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0e1220;border-bottom:1px solid #2a2f45}
+.board-main{flex:1;display:grid;grid-template-columns:1fr 300px}
+.puzzle-area{display:flex;align-items:center;justify-content:center}
+.puzzle-grid{display:flex;flex-direction:column;gap:8px;max-width:1000px;justify-content:center}
+.puzzle-row{display:flex;gap:8px;flex-wrap:nowrap;justify-content:center}
+.punct{font-weight:700;font-size:28px;color:var(--text);align-self:center}
+.space-gap{width:24px;}
+.tile{width:48px;height:64px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid #2a2f45;background:#0c1120;font-weight:700;font-size:28px}
+.tile.revealed{background:#243055;border-color:#3d4a6b}
+.tile.pre-reveal{background:#1e3a8a;border-color:#3060c0}
+.tile.revealing{animation:revealPop 220ms ease-out}
+@keyframes revealPop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.tile.blank{background:transparent;border-color:transparent}
+.players-panel{border-left:1px solid #2a2f45;padding:12px;overflow:auto}
+.player{display:flex;align-items:center;justify-content:space-between;background:#101424;border:1px solid #2a2f45;border-radius:8px;padding:8px;margin-bottom:8px}
+.player.active{outline:2px solid var(--acc)}
+.inventory{display:flex;gap:6px;flex-wrap:wrap}
+.inventory img{width:28px;height:28px;border-radius:6px;border:1px solid #2a2f45;object-fit:cover}
+
+/* Wheel + transition */
+.views{position:relative;flex:1;overflow:hidden}
+.view{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform 500ms ease, opacity 500ms ease}
+.view-board{transform:translateX(0)}
+.view-wheel{transform:translateX(100%)}
+.show-wheel .view-board{transform:translateX(-100%);opacity:0}
+.show-wheel .view-wheel{transform:translateX(0);opacity:1}
+
+/* Angled perspective toggle */
+body.angled .view section.puzzle-area{transform: perspective(1200px) rotateX(12deg) rotateY(-8deg); transform-style:preserve-3d;}
+
+.wheel-frame{width:70vmin;max-width:700px;position:relative;display:flex;align-items:flex-start;justify-content:center;overflow:visible}
+.wheel-tilt{width:70vmin;height:70vmin;max-width:700px;max-height:700px;position:relative;display:flex;align-items:flex-start;justify-content:center}
+.wheel-canvas{width:70vmin;height:70vmin;max-width:700px;max-height:700px;border-radius:50%;border:4px solid #2a2f45;background:#0f1320;position:relative;overflow:hidden;transform: scale(var(--wheel-scale,1)) rotate(var(--spin-angle, 0deg))}
+/* Angled wheel crop */
+body.angled .view-wheel .wheel-frame{
+  height:calc(70vmin * var(--wheel-angled-frame-ratio, 0.38));
+  overflow:hidden;
+  perspective: var(--wheel-angled-perspective, 900px);
+  perspective-origin:50% 0%;
+}
+body.angled .view-wheel .wheel-tilt{
+  transform-origin:50% 60%;
+  transform: translateY(var(--wheel-angled-translateY, -12%)) rotateX(var(--wheel-angled-rotateX, 40deg));
+}
+body.angled .view-wheel .pointer{ top: var(--wheel-pointer-offset, -2px) }
+/* Ensure angled view ignores scale so spin remains circular */
+body.angled .view-wheel .wheel-canvas{ transform: rotate(var(--spin-angle, 0deg)) }
+.wheel-label{position:absolute;transform-origin:50% 50%;color:#fff;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.wheel-label.vertical{transform-origin:50% 0%}
+.wheel-label.vertical .stack{display:flex;flex-direction:column;align-items:center;line-height:1;letter-spacing:0;font-weight:700}
+.wheel-label.vertical .ch{display:block}
+/* SVG overlay for vertical labels */
+.wheel-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wheel-svg text{fill:#fff;stroke:rgba(0,0,0,.55);stroke-width:2;paint-order:stroke fill;font-weight:800}
+.pointer{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:24px solid var(--warn);position:absolute;top:var(--wheel-pointer-offset, 0px);left:50%;transform:translateX(-50%);z-index:10}
+
+/* Transparent mode for OBS */
+body.transparent {
+  background: transparent !important;
+}
+
+/* Realistic Board styling */
+body.realistic-board .tile{background:linear-gradient(180deg,#264d3a,#173326); border-color:#225c42; box-shadow: inset 0 2px 6px rgba(0,0,0,.6), 0 2px 2px rgba(0,0,0,.3)}
+body.realistic-board .tile.revealed{background:linear-gradient(180deg,#4bd18b,#1c6b45); border-color:#39a56e; color:#e8fff2; text-shadow:0 2px 4px rgba(0,0,0,.7)}
+body.realistic-board .tile.pre-reveal{background:linear-gradient(180deg,#2b61c7,#1b3e7f); border-color:#2d6ee6; box-shadow: inset 0 2px 6px rgba(0,0,0,.6), 0 0 10px rgba(42,111,230,.5)}
+body.realistic-board .tile.blank{display:none}
+
+/* Realistic Wheel styling */
+body.realistic-wheel .wheel-canvas{
+  border:6px solid #222;
+  box-shadow: inset 0 20px 60px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.6);
+}
+/* separators and gloss overlay */
+body.realistic-wheel .wheel-canvas{
+  background-image:
+    radial-gradient(ellipse at 50% -20%, rgba(255,255,255,.25), rgba(255,255,255,0) 50%),
+    repeating-conic-gradient(rgba(0,0,0,.15) 0deg, rgba(0,0,0,.15) 1deg, transparent 1deg, transparent 6deg);
+  background-blend-mode: overlay, normal;
+}
+body.realistic-wheel .wheel-canvas::after{
+  content:""; position:absolute; inset:29% 29%; border-radius:50%;
+  background: radial-gradient(circle at 30% 30%, #f0f0f0, #bfbfbf 50%, #8a8a8a 60%, #555 85%);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.5);
+}
+body.realistic-wheel .pointer{border-bottom-color:#ffcc00; filter: drop-shadow(0 2px 2px rgba(0,0,0,.6))}
