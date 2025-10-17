@@ -246,7 +246,13 @@
           const div = document.createElement('div');
           div.className = 'player' + (p.id === s.activePlayerId ? ' active' : '');
           const left = document.createElement('div');
-          left.innerHTML = `<strong>${p.name}</strong><div style="color:var(--muted);font-size:12px;">Score: ${p.score}</div>`;
+          const nameEl = document.createElement('strong');
+          nameEl.textContent = p.name;
+          const scoreEl = document.createElement('div');
+          scoreEl.className = 'score';
+          scoreEl.textContent = `Score: ${p.score}`;
+          left.appendChild(nameEl);
+          left.appendChild(scoreEl);
           const inv = document.createElement('div');
           inv.className = 'inventory';
           for (const b of p.inventory) {
@@ -285,6 +291,12 @@
         document.body.style.setProperty('--wheel-scale', String(zoom));
         const arrow = (s.settings && (typeof s.settings.wheelPointerOffset!== 'undefined')) ? s.settings.wheelPointerOffset : 0;
         document.body.style.setProperty('--wheel-pointer-offset', `${arrow}px`);
+        const panelW = (s.settings && s.settings.playersPanelWidth) ? s.settings.playersPanelWidth : 300;
+        document.body.style.setProperty('--players-panel-width', `${panelW}px`);
+        const panelScale = (s.settings && s.settings.playersPanelScale) ? s.settings.playersPanelScale : 1;
+        document.body.style.setProperty('--players-panel-scale', String(panelScale));
+        const scoreScale = (s.settings && s.settings.playersScoreScale) ? s.settings.playersScoreScale : 1;
+        document.body.style.setProperty('--players-score-scale', String(scoreScale));
       }
 
       function renderWheel(s) {
@@ -341,7 +353,7 @@
           svg.setAttribute('viewBox', '0 0 1000 1000');
           svg.setAttribute('class', 'wheel-svg');
           const cx0 = 500, cy0 = 500;
-          const outerR = 470;
+          const outerR = 465;
           const realistic = !!(s.settings && s.settings.realisticWheel);
           const centerInset = realistic ? 0.29 : 0.22;
           const innerR = (1 - 2 * centerInset) * 500;
@@ -352,7 +364,7 @@
             const midAngle = ((i + 0.5) / N) * 2 * Math.PI;
             const deg = (midAngle * 180) / Math.PI;
             const g = document.createElementNS(ns, 'g');
-            g.setAttribute('transform', `rotate(${deg}, ${cx0}, ${cy0})`);
+            g.setAttribute('transform', `rotate(${deg + 90}, ${cx0}, ${cy0})`);
             const labelStr = String(slots[i].label);
             const chars = labelStr.split('');
             const need = chars.length * baseLineH;
@@ -424,3 +436,4 @@
     </script>
   </body>
   </html>
+

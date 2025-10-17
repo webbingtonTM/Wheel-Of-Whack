@@ -12,6 +12,11 @@ function deepClone(obj) {
 
 function genId() { return Math.random().toString(36).slice(2, 9); }
 
+// Pointer mapping: 0deg is at 3 o'clock; pointer visually at the top
+// Use 270deg to compensate for canvas rotation direction so the wedge under the
+// pointer matches the computed result index.
+export const POINTER_TOP_DEG = 270;
+
 export class State {
   constructor(options = {}) {
     this.sessionFilter = options.sessionId || null;
@@ -156,6 +161,9 @@ export function defaultState() {
       wheelVerticalLabels: false,
       realisticWheel: false,
       realisticBoard: false,
+      playersPanelWidth: 300,
+      playersPanelScale: 1,
+      playersScoreScale: 1,
       sessionId: null,
     },
     players: [
@@ -397,7 +405,7 @@ export function startSpin(state, desiredIndex = null) {
   const N = Math.max(1, slots.length);
   const resultIndex = desiredIndex != null ? (desiredIndex % N) : Math.floor(Math.random() * N);
   const midDeg = ((resultIndex + 0.5) / N) * 360; // 0deg = 3 o'clock
-  const pointerDeg = 90; // pointer at 12 o'clock
+  const pointerDeg = POINTER_TOP_DEG; // pointer at 12 o'clock
   const baseTarget = pointerDeg - midDeg; // rotation that aligns result to pointer
   const current = (next.wheelSpin && next.wheelSpin.angle) || 0;
   const minTurns = 4; // full rotations

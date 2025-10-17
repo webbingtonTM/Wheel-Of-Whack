@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Create Game � Wheel of Wack</title>
+    <title>Create Game — Wheel of Wack</title>
     <link rel="stylesheet" href="styles/common.css" />
   </head>
   <body>
@@ -45,7 +45,17 @@
             <input type="text" id="bonusEmoji" placeholder="Emoji (optional)" style="width:140px" />
             <button id="addBonus">Add</button>
           </div>
-          <div class="row" id="bonusEmojiQuick" style="gap:6px;margin-top:6px"><span style="color:var(--muted);font-size:12px">Quick picks:</span><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="?">?</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button><button data-emo="??">??</button></div>
+          <div class="row" id="bonusEmojiQuick" style="gap:6px;margin-top:6px">
+            <span style="color:var(--muted);font-size:12px">Quick picks:</span>
+            <button data-emo="🎉">🎉</button>
+            <button data-emo="🍀">🍀</button>
+            <button data-emo="🔥">🔥</button>
+            <button data-emo="⭐">⭐</button>
+            <button data-emo="🍺">🍺</button>
+            <button data-emo="🎯">🎯</button>
+            <button data-emo="💥">💥</button>
+            <button data-emo="🍆">🍆</button>
+          </div>
           <div id="bonusList" class="list" style="margin-top:8px"></div>
         </div>
 
@@ -134,7 +144,7 @@
         model.players.forEach((p, idx)=>{
           const div = document.createElement('div');
           div.className = 'list-item';
-          const row = document.createElement('div'); row.className = 'row';
+          const row = document.createElement('div'); row.className='row';
           const name = document.createElement('input'); name.type='text'; name.value=p.name;
           name.addEventListener('change', ()=>{ model.players[idx].name = name.value || `Player ${idx+1}`; renderPlayers(); });
           const del = document.createElement('button'); del.className='danger'; del.textContent='Remove';
@@ -219,7 +229,6 @@
         renderSlots();
       });
       elSpinDuration.addEventListener('change', ()=>{
-        // Store as a hint in model (Admin can use later if desired)
         model._spinDuration = parseInt(elSpinDuration.value||'4500',10) || 4500;
       });
 
@@ -231,8 +240,7 @@
         base.bonusItems = model.bonusItems;
         base.wheel = model.wheel;
         base.activePlayerId = base.players[0] ? base.players[0].id : null;
-        // spin duration hint can be extended into state.settings later if needed
-        const sessionId = createSession(name, base);
+        createSession(name, base);
         window.location.href = 'admin.html';
       });
 
@@ -268,17 +276,35 @@
         const cat = pz ? pz.category : '';
         const phrase = pz ? pz.phrase : 'ADD A PUZZLE TO PREVIEW';
         elPreviewMeta.textContent = cat ? `Category: ${cat}` : 'No puzzle selected';
-        const text = phrase.toUpperCase();
-        for (const ch of text) {
-          const tile = document.createElement('div');
-          if (!/[A-Z]/.test(ch)) {
-            tile.className = 'tile blank';
-            tile.textContent = ch === ' ' ? '' : ch;
-          } else {
-            tile.className = 'tile';
-            tile.textContent = '';
+        const text = (phrase || '').toUpperCase();
+
+        const gap = 8;
+        const tileW = (()=>{
+          const tmp = document.createElement('div');
+          tmp.className = 'tile'; tmp.style.visibility='hidden'; tmp.style.position='absolute';
+          elPreviewGrid.appendChild(tmp); const w = tmp.offsetWidth; elPreviewGrid.removeChild(tmp); return Math.max(1,w);
+        })();
+        const avail = Math.max(1, elPreviewGrid.clientWidth || 800);
+        const maxCols = Math.max(1, Math.floor((avail + gap) / (tileW + gap)));
+
+        function layoutRowsForText(txt, maxC){
+          const rows=[]; let cur=[]; const isLetter=c=>/^[A-Z]$/.test(c); const push=()=>{ if(cur.length){ rows.push(cur); cur=[]; } };
+          let i=0; while(i<txt.length){
+            if(isLetter(txt[i])){ let j=i; while(j<txt.length && isLetter(txt[j])) j++; const len=j-i; if(cur.length>0 && (cur.length+len)>maxC) push(); for(let k=i;k<j;k++) cur.push(k); i=j; }
+            else { if(txt[i]===' ' && cur.length===0){ i++; continue; } if(cur.length>=maxC) push(); cur.push(i); i++; }
+            if(cur.length>=maxC) push();
+          } push(); return rows;
+        }
+        const rows = layoutRowsForText(text, maxCols);
+        for (const row of rows){
+          const rowEl = document.createElement('div'); rowEl.className='puzzle-row';
+          for(const i of row){
+            const ch = text[i]; const tile = document.createElement('div');
+            if(!/[A-Z]/.test(ch)){ tile.className='tile blank'; tile.textContent = (ch===' ') ? '' : ch; }
+            else { tile.className='tile'; tile.textContent=''; }
+            rowEl.appendChild(tile);
           }
-          elPreviewGrid.appendChild(tile);
+          elPreviewGrid.appendChild(rowEl);
         }
       }
 
@@ -290,6 +316,4 @@
       renderPreview();
     </script>
   </body>
-  </html>
-
-
+</html>

@@ -38,7 +38,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 /* Board */
 .board-shell{height:100vh;display:flex;flex-direction:column}
 .board-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0e1220;border-bottom:1px solid #2a2f45}
-.board-main{flex:1;display:grid;grid-template-columns:1fr 300px}
+.board-main{flex:1;display:grid;grid-template-columns:1fr var(--players-panel-width, 300px)}
 .puzzle-area{display:flex;align-items:center;justify-content:center}
 .puzzle-grid{display:flex;flex-direction:column;gap:8px;max-width:1000px;justify-content:center}
 .puzzle-row{display:flex;gap:8px;flex-wrap:nowrap;justify-content:center}
@@ -50,7 +50,10 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .tile.revealing{animation:revealPop 220ms ease-out}
 @keyframes revealPop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
 .tile.blank{background:transparent;border-color:transparent}
-.players-panel{border-left:1px solid #2a2f45;padding:12px;overflow:auto}
+.players-panel{border-left:1px solid #2a2f45;padding:12px;overflow:auto;font-size:calc(1rem * var(--players-panel-scale, 1))}
+.players-panel .score{color:var(--muted);font-size:calc(0.85em * var(--players-score-scale, 1))}
+.inventory{gap:calc(6px * var(--players-panel-scale, 1))}
+.inventory img{width:calc(28px * var(--players-panel-scale, 1));height:calc(28px * var(--players-panel-scale, 1))}
 .player{display:flex;align-items:center;justify-content:space-between;background:#101424;border:1px solid #2a2f45;border-radius:8px;padding:8px;margin-bottom:8px}
 .player.active{outline:2px solid var(--acc)}
 .inventory{display:flex;gap:6px;flex-wrap:wrap}
