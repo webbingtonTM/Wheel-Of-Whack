@@ -43,6 +43,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .board-main{flex:1;display:grid;grid-template-columns:1fr var(--players-panel-width, 300px)}
 .puzzle-area{display:flex;align-items:center;justify-content:center}
 .puzzle-grid{display:flex;flex-direction:column;gap:8px;max-width:1000px;justify-content:center}
+.puzzle-grid{transform: scale(var(--puzzle-scale, 1)); transform-origin:center}
 .puzzle-row{display:flex;gap:8px;flex-wrap:nowrap;justify-content:center}
 .punct{font-weight:700;font-size:28px;color:var(--text);align-self:center}
 .space-gap{width:24px;}

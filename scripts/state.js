@@ -168,6 +168,7 @@ export function defaultState() {
       playersPanelWidth: 300,
       playersPanelScale: 1,
       playersScoreScale: 1,
+      puzzleScale: 1,
       sessionId: null,
     },
     shop: {
@@ -276,11 +277,8 @@ export function toggleShop(state, show) {
 export function addShopItem(state, bonusId, price) {
   const next = deepClone(state);
   next.shop = next.shop || { items: [], style: { rackTheme: 'shelf', keeperImageDataUrl: '' } };
-  const exists = next.shop.items.some(it => it.bonusId === bonusId);
-  if (!exists) {
-    const id = genId();
-    next.shop.items.push({ id, bonusId, price: Math.max(0, parseInt(price,10)||0) });
-  }
+  const id = genId();
+  next.shop.items.push({ id, bonusId, price: Math.max(0, parseInt(price,10)||0) });
   return next;
 }
 
@@ -335,14 +333,23 @@ export function addBonusItem(state, item) {
 export function awardBonusToPlayer(state, playerId, bonusId) {
   const next = deepClone(state);
   const p = next.players.find((x) => x.id === playerId);
-  if (p && !p.inventory.includes(bonusId)) p.inventory.push(bonusId);
+  if (p) {
+    p.inventory = Array.isArray(p.inventory) ? p.inventory : [];
+    // Allow multiple copies of the same item
+    p.inventory.push(bonusId);
+  }
   return next;
 }
 
 export function removeBonusFromPlayer(state, playerId, bonusId) {
   const next = deepClone(state);
   const p = next.players.find((x) => x.id === playerId);
-  if (p) p.inventory = p.inventory.filter((id) => id !== bonusId);
+  if (p) {
+    p.inventory = Array.isArray(p.inventory) ? p.inventory : [];
+    // Remove only one copy of the specified item
+    const idx = p.inventory.indexOf(bonusId);
+    if (idx !== -1) p.inventory.splice(idx, 1);
+  }
   return next;
 }
 

@@ -308,6 +308,8 @@
         document.body.style.setProperty('--players-panel-scale', String(panelScale));
         const scoreScale = (s.settings && s.settings.playersScoreScale) ? s.settings.playersScoreScale : 1;
         document.body.style.setProperty('--players-score-scale', String(scoreScale));
+        const puzzleScale = (s.settings && s.settings.puzzleScale) ? s.settings.puzzleScale : 1;
+        document.body.style.setProperty('--puzzle-scale', String(puzzleScale));
       }
 
       function renderWheel(s) {
