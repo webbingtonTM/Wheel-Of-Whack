@@ -155,6 +155,9 @@ export function defaultState() {
     settings: {
       transparentBg: false,
       showWheel: false,
+      showShop: false,
+      delayResolvableActions: false,
+      delayScoringPoints: false,
       angledView: false,
       angledPreset: 'standard',
       wheelZoom: 1,
@@ -166,6 +169,10 @@ export function defaultState() {
       playersPanelScale: 1,
       playersScoreScale: 1,
       sessionId: null,
+    },
+    shop: {
+      items: [], // [{ id, bonusId, price }]
+      style: { rackTheme: 'shelf', keeperImageDataUrl: '', keeperOffsetX: 0, keeperOffsetY: 0 },
     },
     players: [
       { id: id(), name: 'Player 1', score: 0, inventory: [] },
@@ -199,6 +206,7 @@ export function defaultState() {
       resultLabel: null,
       finishedAt: null,
     },
+    pendingActions: [], // [{id,type:'bankrupt'|'lose_turn'|'text'|'points', label?, amount?, playerId, createdAt}]
   };
 }
 
@@ -253,6 +261,51 @@ export function setActivePlayer(state, playerId) {
 export function toggleWheel(state, show) {
   const next = deepClone(state);
   next.settings.showWheel = !!show;
+  if (show) next.settings.showShop = false; // wheel takes precedence
+  return next;
+}
+
+export function toggleShop(state, show) {
+  const next = deepClone(state);
+  next.settings.showShop = !!show;
+  if (show) next.settings.showWheel = false; // shop takes precedence
+  return next;
+}
+
+// Shop management
+export function addShopItem(state, bonusId, price) {
+  const next = deepClone(state);
+  next.shop = next.shop || { items: [], style: { rackTheme: 'shelf', keeperImageDataUrl: '' } };
+  const exists = next.shop.items.some(it => it.bonusId === bonusId);
+  if (!exists) {
+    const id = genId();
+    next.shop.items.push({ id, bonusId, price: Math.max(0, parseInt(price,10)||0) });
+  }
+  return next;
+}
+
+export function updateShopItemPrice(state, itemId, price) {
+  const next = deepClone(state);
+  const it = (next.shop && next.shop.items || []).find(x => x.id === itemId);
+  if (it) it.price = Math.max(0, parseInt(price,10)||0);
+  return next;
+}
+
+export function removeShopItem(state, itemId) {
+  const next = deepClone(state);
+  if (next.shop && Array.isArray(next.shop.items)) {
+    next.shop.items = next.shop.items.filter(x => x.id !== itemId);
+  }
+  return next;
+}
+
+export function setShopStyle(state, style) {
+  const next = deepClone(state);
+  next.shop = next.shop || { items: [], style: { rackTheme: 'shelf', keeperImageDataUrl: '', keeperOffsetX: 0, keeperOffsetY: 0 } };
+  const merged = { ...next.shop.style, ...style };
+  if (typeof merged.keeperOffsetX === 'number') merged.keeperOffsetX = Math.max(-1000, Math.min(1000, merged.keeperOffsetX));
+  if (typeof merged.keeperOffsetY === 'number') merged.keeperOffsetY = Math.max(-1000, Math.min(1000, merged.keeperOffsetY));
+  next.shop.style = merged;
   return next;
 }
 
@@ -283,6 +336,13 @@ export function awardBonusToPlayer(state, playerId, bonusId) {
   const next = deepClone(state);
   const p = next.players.find((x) => x.id === playerId);
   if (p && !p.inventory.includes(bonusId)) p.inventory.push(bonusId);
+  return next;
+}
+
+export function removeBonusFromPlayer(state, playerId, bonusId) {
+  const next = deepClone(state);
+  const p = next.players.find((x) => x.id === playerId);
+  if (p) p.inventory = p.inventory.filter((id) => id !== bonusId);
   return next;
 }
 
@@ -425,6 +485,7 @@ export function startSpin(state, desiredIndex = null) {
   };
   // Auto-show wheel view during spin
   next.settings.showWheel = true;
+  next.settings.showShop = false;
   return next;
 }
 
@@ -436,14 +497,60 @@ export function finishSpin(state) {
   const idx = next.wheelSpin.resultIndex;
   const slot = next.wheel.slots[idx] || {};
   const label = (slot.label || '').toLowerCase();
+  const delayed = !!(next.settings && next.settings.delayResolvableActions);
   if (label.includes('bankrupt')) {
-    // Set active player's score to 0 and advance turn
+    if (delayed) {
+      next.pendingActions.push({ id: genId(), type: 'bankrupt', label: slot.label, playerId: next.activePlayerId, createdAt: Date.now() });
+      return next;
+    }
     const ap = next.players.find((p)=> p.id === next.activePlayerId);
     if (ap) ap.score = 0;
     return advancePlayer(next, 1);
   }
   if (label.includes('lose') && label.includes('turn')) {
+    if (delayed) {
+      next.pendingActions.push({ id: genId(), type: 'lose_turn', label: slot.label, playerId: next.activePlayerId, createdAt: Date.now() });
+      return next;
+    }
     return advancePlayer(next, 1);
   }
+  // Any other non-numeric (text) slot — enqueue informational action if delayed
+  if (!/^\d+$/.test(slot.label || '')) {
+    if (delayed) next.pendingActions.push({ id: genId(), type: 'text', label: slot.label, playerId: next.activePlayerId, createdAt: Date.now() });
+  }
+  return next;
+}
+
+export function addPendingAction(state, action) {
+  const next = deepClone(state);
+  next.pendingActions = Array.isArray(next.pendingActions) ? next.pendingActions : [];
+  next.pendingActions.push({ id: genId(), createdAt: Date.now(), ...action });
+  return next;
+}
+
+export function resolvePendingAction(state, actionId) {
+  const next = deepClone(state);
+  const list = Array.isArray(next.pendingActions) ? next.pendingActions : [];
+  const idx = list.findIndex(a => a.id === actionId);
+  if (idx === -1) return next;
+  const act = list[idx] || {};
+  // Apply effects by type
+  if (act.type === 'bankrupt') {
+    const p = next.players.find(x => x.id === (act.playerId || next.activePlayerId));
+    if (p) p.score = 0;
+    return advancePlayer({ ...next, pendingActions: list.filter((_,i)=>i!==idx) }, 1);
+  }
+  if (act.type === 'lose_turn') {
+    return advancePlayer({ ...next, pendingActions: list.filter((_,i)=>i!==idx) }, 1);
+  }
+  if (act.type === 'points') {
+    const p = next.players.find(x => x.id === (act.playerId || next.activePlayerId));
+    const amt = parseInt(act.amount, 10) || 0;
+    if (p && amt) p.score = (p.score || 0) + amt;
+    next.pendingActions = list.filter((_,i)=>i!==idx);
+    return next;
+  }
+  // 'text' or unknown: just clear
+  next.pendingActions = list.filter((_,i)=>i!==idx);
   return next;
 }

@@ -19,6 +19,9 @@
           <div class="row" style="margin-top:8px">
             <a href="create.html" target="_blank"><button>Open Creator</button></a>
           </div>
+          <div class="row" style="margin-top:8px">
+            <button id="toggleBuildTools">Hide Build Tools</button>
+          </div>
         </div>
         <div class="section">
           <h3>Game Settings</h3>
@@ -26,9 +29,9 @@
             <label><span>Transparent Background (Board)</span>
               <input type="checkbox" id="transparentBg" />
             </label>
-            <label><span>Show Wheel (Transition)</span>
-              <input type="checkbox" id="showWheel" />
-            </label>
+            <button id="goBoard">Go to Board</button>
+            <button id="goWheel">Go to Wheel</button>
+            <button id="goShop">Go to Shop</button>
           </div>
 
           <details style="margin-top:8px">
@@ -101,6 +104,42 @@
         </div>
 
         <div class="section">
+          <h3>Shop</h3>
+          <div class="row" style="margin-bottom:8px">
+            <label><span>Rack Theme</span>
+              <select id="shopRackTheme">
+                <option value="shelf">Shelves</option>
+                <option value="grid">Grid</option>
+                <option value="neon">Neon</option>
+              </select>
+            </label>
+            <label><span>Shopkeeper Image</span>
+              <input type="file" id="shopKeeperImage" accept="image/*" />
+            </label>
+            <button id="shopClearKeeper">Clear Image</button>
+          </div>
+          <div class="row" style="margin-bottom:8px">
+            <label><span>Keeper X Offset (px)</span>
+              <input type="number" id="shopKeeperOffsetX" min="-1000" max="1000" step="5" style="width:120px" />
+            </label>
+            <label><span>Keeper Y Offset (px)</span>
+              <input type="number" id="shopKeeperOffsetY" min="-1000" max="1000" step="5" style="width:120px" />
+            </label>
+          </div>
+          
+          <div class="row" style="margin-bottom:8px">
+            <label><span>Add Item (from Bonus)</span>
+              <select id="shopAddBonus"></select>
+            </label>
+            <label><span>Price</span>
+              <input type="number" id="shopAddPrice" min="0" step="10" style="width:120px" />
+            </label>
+            <button id="shopAddBtn">Add to Shop</button>
+          </div>
+          <div id="shopItemsList" class="list"></div>
+        </div>
+
+        <div class="section">
           <h3>Players</h3>
           <div id="playersList" class="list"></div>
           <div class="row" style="margin-top:8px;">
@@ -117,14 +156,7 @@
           </div>
         </div>
 
-        <div class="section">
-          <h3>Guess Letter</h3>
-          <div class="row">
-            <input type="text" id="guessInput" maxlength="1" style="width:64px;text-transform:uppercase" />
-            <button id="guessBtn" class="primary">Reveal</button>
-          </div>
-          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap" id="letterButtons"></div>
-        </div>
+        
 
         <div class="section">
           <h3>Bonus Items</h3>
@@ -148,6 +180,31 @@
           <div id="bonusList" class="list" style="margin-top:8px"></div>
         </div>
 
+        
+
+      </aside>
+      <main class="content">
+        <div class="section" id="resolvableBox">
+          <h3>Resolvable Actions</h3>
+          <div class="row" style="margin-bottom:6px">
+            <label><span>Delayed resolvable actions</span>
+              <input type="checkbox" id="delayedActions" />
+            </label>
+            <label><span>Delay scoring points</span>
+              <input type="checkbox" id="delayedPoints" />
+            </label>
+            <span id="pendingCount" style="color:var(--muted)"></span>
+          </div>
+          <div id="pendingSlot" class="list"></div>
+        </div>
+        <div class="section">
+          <h3>Guess Letter</h3>
+          <div class="row">
+            <input type="text" id="guessInput" maxlength="1" style="width:64px;text-transform:uppercase" />
+            <button id="guessBtn" class="primary">Reveal</button>
+          </div>
+          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap" id="letterButtons"></div>
+        </div>
         <div class="section">
           <h3>Buy Vowels</h3>
           <div class="row">
@@ -160,9 +217,6 @@
           </div>
           <div class="row" id="vowelButtons" style="margin-top:8px;gap:6px;flex-wrap:wrap"></div>
         </div>
-
-      </aside>
-      <main class="content">
         <div class="section">
           <h3>Puzzles</h3>
           <div class="row">
@@ -201,9 +255,11 @@
         revealLetter,
         setActivePlayer,
         toggleWheel,
+        toggleShop,
         toggleTransparent,
         addBonusItem,
         awardBonusToPlayer,
+        removeBonusFromPlayer,
         setPlayers,
         setWheel,
         randomizeBonusOnWheel,
@@ -217,23 +273,45 @@
         addPuzzle,
         setCurrentPuzzle,
         buyVowel,
+        addShopItem,
+        updateShopItemPrice,
+        removeShopItem,
+        setShopStyle,
+        addPendingAction,
+        resolvePendingAction,
       } from './scripts/state.js';
 
       const state = new State();
 
       // Elements
       const elTransparent = document.getElementById('transparentBg');
-      const elShowWheel = document.getElementById('showWheel');
+      const elToggleBuild = document.getElementById('toggleBuildTools');
+      const elGoBoard = document.getElementById('goBoard');
+      const elGoWheel = document.getElementById('goWheel');
       const elAngledView = document.getElementById('angledView');
       const elAngledPreset = document.getElementById('angledPreset');
       const elRealisticWheel = document.getElementById('realisticWheel');
       const elRealisticBoard = document.getElementById('realisticBoard');
       const elVerticalLabels = document.getElementById('verticalLabels');
+      const elGoShop = document.getElementById('goShop');
+      const elShopRackTheme = document.getElementById('shopRackTheme');
+      const elShopKeeperImage = document.getElementById('shopKeeperImage');
+      const elShopClearKeeper = document.getElementById('shopClearKeeper');
+      const elShopKeeperOffsetX = document.getElementById('shopKeeperOffsetX');
+      const elShopKeeperOffsetY = document.getElementById('shopKeeperOffsetY');
+      const elShopAddBonus = document.getElementById('shopAddBonus');
+      const elShopAddPrice = document.getElementById('shopAddPrice');
+      const elShopAddBtn = document.getElementById('shopAddBtn');
+      const elShopItemsList = document.getElementById('shopItemsList');
       const elWheelZoom = document.getElementById('wheelZoom');
       const elWheelZoomVal = document.getElementById('wheelZoomVal');
       const elArrowOffset = document.getElementById('arrowOffset');
       const elArrowOffsetVal = document.getElementById('arrowOffsetVal');
       const elOpenBoard = document.getElementById('openBoard');
+      const elDelayedActions = document.getElementById('delayedActions');
+      const elDelayedPoints = document.getElementById('delayedPoints');
+      const elPendingCount = document.getElementById('pendingCount');
+      const elPendingSlot = document.getElementById('pendingSlot');
       const elPanelWidth = document.getElementById('panelWidth');
       const elPanelWidthVal = document.getElementById('panelWidthVal');
       const elPanelScale = document.getElementById('panelScale');
@@ -274,7 +352,6 @@
 
       function renderSettings(s) {
         elTransparent.checked = !!s.settings.transparentBg;
-        elShowWheel.checked = !!s.settings.showWheel;
         elAngledView.checked = !!s.settings.angledView;
         elRealisticWheel.checked = !!s.settings.realisticWheel;
         elRealisticBoard.checked = !!s.settings.realisticBoard;
@@ -295,6 +372,44 @@
         const sc = Number(s.settings.playersScoreScale || 1).toFixed(2);
         elScoreScale.value = sc;
         elScoreScaleVal.textContent = `${sc}x`;
+        if (elDelayedActions) elDelayedActions.checked = !!s.settings.delayResolvableActions;
+        if (elDelayedPoints) elDelayedPoints.checked = !!s.settings.delayScoringPoints;
+      }
+
+      function renderShopAdmin(s){
+        const theme = (s.shop && s.shop.style && s.shop.style.rackTheme) || 'shelf';
+        if (elShopRackTheme) elShopRackTheme.value = theme;
+        const kx = ((s.shop && s.shop.style && s.shop.style.keeperOffsetX) || 0);
+        const ky = ((s.shop && s.shop.style && s.shop.style.keeperOffsetY) || 0);
+        if (elShopKeeperOffsetX) elShopKeeperOffsetX.value = kx;
+        if (elShopKeeperOffsetY) elShopKeeperOffsetY.value = ky;
+        if (elShopAddBonus){
+          elShopAddBonus.innerHTML = '';
+          const opt = document.createElement('option'); opt.value=''; opt.textContent='Select bonus';
+          elShopAddBonus.appendChild(opt);
+          const inShop = new Set((s.shop?.items||[]).map(it=>it.bonusId));
+          (s.bonusItems||[]).forEach(b=>{
+            if (!inShop.has(b.id)){
+              const o = document.createElement('option'); o.value=b.id; o.textContent=b.name; elShopAddBonus.appendChild(o);
+            }
+          });
+        }
+        if (elShopItemsList){
+          elShopItemsList.innerHTML = '';
+          (s.shop?.items||[]).forEach(it=>{
+            const bi = s.bonusItems.find(x=>x.id===it.bonusId);
+            const row = document.createElement('div'); row.className='list-item';
+            const wrap = document.createElement('div'); wrap.className='row';
+            const img = document.createElement('img'); img.src = bi?.imageDataUrl || ''; img.alt=bi?.name||''; img.style.width='40px'; img.style.height='40px'; img.style.borderRadius='6px'; img.style.border='1px solid #2a2f45'; img.style.objectFit='cover';
+            const name = document.createElement('strong'); name.textContent = bi?.name || it.bonusId;
+            const price = document.createElement('input'); price.type='number'; price.min='0'; price.step='10'; price.value = it.price || 0; price.style.width='120px';
+            price.addEventListener('change', ()=> state.set(st=> updateShopItemPrice(st, it.id, parseInt(price.value||'0',10)||0)) );
+            const rm = document.createElement('button'); rm.className='danger'; rm.textContent='Remove';
+            rm.addEventListener('click', ()=> state.set(st=> removeShopItem(st, it.id)) );
+            wrap.appendChild(img); wrap.appendChild(name); wrap.appendChild(price); wrap.appendChild(rm);
+            row.appendChild(wrap); elShopItemsList.appendChild(row);
+          });
+        }
       }
 
       function renderSessionsUI() {
@@ -370,6 +485,42 @@
           award.appendChild(sel);
           award.appendChild(btn);
           div.appendChild(award);
+
+          // Inventory management list with remove buttons
+          if (Array.isArray(p.inventory) && p.inventory.length) {
+            const invWrap = document.createElement('div');
+            invWrap.className = 'row';
+            invWrap.style.flexWrap = 'wrap';
+            invWrap.style.gap = '8px';
+            p.inventory.forEach((bid) => {
+              const bi = s.bonusItems.find((x) => x.id === bid);
+              const item = document.createElement('div');
+              item.style.display = 'flex';
+              item.style.alignItems = 'center';
+              item.style.gap = '6px';
+              const img = document.createElement('img');
+              img.src = bi?.imageDataUrl || '';
+              img.alt = bi?.name || '';
+              img.style.width = '24px';
+              img.style.height = '24px';
+              img.style.borderRadius = '4px';
+              img.style.border = '1px solid #2a2f45';
+              img.style.objectFit = 'cover';
+              const lbl = document.createElement('span');
+              lbl.textContent = bi?.name || bid;
+              const rm = document.createElement('button');
+              rm.textContent = 'Remove';
+              rm.className = 'danger';
+              rm.addEventListener('click', () => {
+                state.set((st) => removeBonusFromPlayer(st, p.id, bid));
+              });
+              item.appendChild(img);
+              item.appendChild(lbl);
+              item.appendChild(rm);
+              invWrap.appendChild(item);
+            });
+            div.appendChild(invWrap);
+          }
 
           elPlayersList.appendChild(div);
         });
@@ -511,12 +662,111 @@
         });
       }
 
+      // Resolvable actions box
+      function renderResolvable(s){
+        if (!elPendingSlot || !elPendingCount) return;
+        const list = Array.isArray(s.pendingActions) ? s.pendingActions : [];
+        elPendingCount.textContent = list.length ? `(${list.length} pending)` : '';
+        elPendingSlot.innerHTML = '';
+        if (!list.length) {
+          const div = document.createElement('div');
+          div.className = 'list-item';
+          div.textContent = 'No pending actions';
+          elPendingSlot.appendChild(div);
+          return;
+        }
+        const a = list[0];
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const inner = document.createElement('div');
+        inner.className = 'row';
+        const actionText = (a.type === 'points') ? `Points Scored: ${a.amount}` : (a.label || a.type);
+        const action = document.createElement('div');
+        action.textContent = `Action to resolve: ${actionText}`;
+        const t = document.createElement('div');
+        const sPlayer = (s.players.find(p=>p.id===a.playerId) || {}).name || 'Unknown';
+        t.textContent = `Target Player: ${sPlayer}`;
+        const btn = document.createElement('button');
+        btn.textContent = 'Resolve';
+        btn.addEventListener('click', ()=> state.set(st => resolvePendingAction(st, a.id)) );
+        inner.appendChild(action); inner.appendChild(t); inner.appendChild(btn);
+        row.appendChild(inner);
+        elPendingSlot.appendChild(row);
+      }
+
+      
+
       // Events
       elTransparent.addEventListener('change', () => {
         state.set((s)=> toggleTransparent(s, elTransparent.checked));
       });
-      elShowWheel.addEventListener('change', () => {
-        state.set((s)=> toggleWheel(s, elShowWheel.checked));
+      if (elDelayedActions) elDelayedActions.addEventListener('change', ()=>{
+        state.set(s=>{ const n = deepClone(s); n.settings.delayResolvableActions = !!elDelayedActions.checked; return n; });
+      });
+      if (elDelayedPoints) elDelayedPoints.addEventListener('change', ()=>{
+        state.set(s=>{ const n = deepClone(s); n.settings.delayScoringPoints = !!elDelayedPoints.checked; return n; });
+      });
+      elGoWheel.addEventListener('click', () => {
+        state.set((s)=>{
+          let n = deepClone(s);
+          n = toggleShop(n, false);
+          n = toggleWheel(n, true);
+          return n;
+        });
+      });
+      elGoBoard.addEventListener('click', () => {
+        state.set((s)=>{
+          let n = deepClone(s);
+          n = toggleShop(n, false);
+          n = toggleWheel(n, false);
+          return n;
+        });
+      });
+      elGoShop.addEventListener('click', () => {
+        state.set((s)=> toggleShop(s, true));
+      });
+      if (elShopRackTheme) elShopRackTheme.addEventListener('change', () => {
+        const v = elShopRackTheme.value || 'shelf';
+        state.set(st => setShopStyle(st, { rackTheme: v }));
+      });
+      if (elShopKeeperImage) elShopKeeperImage.addEventListener('change', async () => {
+        const f = elShopKeeperImage.files && elShopKeeperImage.files[0];
+        if (!f) return;
+        const url = await fileToDataUrl(f);
+        state.set(st => setShopStyle(st, { keeperImageDataUrl: url }));
+        elShopKeeperImage.value='';
+      });
+      if (elShopClearKeeper) elShopClearKeeper.addEventListener('click', () => {
+        state.set(st => setShopStyle(st, { keeperImageDataUrl: '' }));
+      });
+      if (elShopKeeperOffsetX) elShopKeeperOffsetX.addEventListener('input', () => {
+        const v = parseInt(elShopKeeperOffsetX.value||'0',10)||0;
+        state.set(st => setShopStyle(st, { keeperOffsetX: v }));
+      });
+      if (elShopKeeperOffsetY) elShopKeeperOffsetY.addEventListener('input', () => {
+        const v = parseInt(elShopKeeperOffsetY.value||'0',10)||0;
+        state.set(st => setShopStyle(st, { keeperOffsetY: v }));
+      });
+      if (elShopRackTheme) elShopRackTheme.addEventListener('change', () => {
+        const v = elShopRackTheme.value || 'shelf';
+        state.set(st => setShopStyle(st, { rackTheme: v }));
+      });
+      if (elShopKeeperImage) elShopKeeperImage.addEventListener('change', async () => {
+        const f = elShopKeeperImage.files && elShopKeeperImage.files[0];
+        if (!f) return;
+        const url = await fileToDataUrl(f);
+        state.set(st => setShopStyle(st, { keeperImageDataUrl: url }));
+        elShopKeeperImage.value='';
+      });
+      if (elShopClearKeeper) elShopClearKeeper.addEventListener('click', () => {
+        state.set(st => setShopStyle(st, { keeperImageDataUrl: '' }));
+      });
+      if (elShopAddBtn) elShopAddBtn.addEventListener('click', () => {
+        const bid = elShopAddBonus.value || '';
+        const price = Math.max(0, parseInt(elShopAddPrice.value||'0',10)||0);
+        if (!bid) return;
+        state.set(st => addShopItem(st, bid, price));
+        elShopAddBonus.value=''; elShopAddPrice.value='';
       });
       elAngledView.addEventListener('change', () => {
         state.set((s)=>{ const n = deepClone(s); n.settings.angledView = !!elAngledView.checked; return n; });
@@ -593,12 +843,17 @@
         const slot = (Array.isArray(s.wheel.slots) && Number.isInteger(spin.resultIndex)) ? (s.wheel.slots[spin.resultIndex] || {}) : {};
         const val = parseInt(slot.label, 10);
         if (Number.isFinite(val) && newCount > 0) {
-          state.set((st)=>{
-            const next = deepClone(st);
-            const ap = next.players.find((p)=> p.id === next.activePlayerId);
-            if (ap) ap.score += val * newCount;
-            return next;
-          });
+          const delayed = !!(s.settings && s.settings.delayScoringPoints);
+          if (delayed) {
+            state.set(st=> addPendingAction(st, { type: 'points', amount: val * newCount, label: String(val), playerId: st.activePlayerId }));
+          } else {
+            state.set((st)=>{
+              const next = deepClone(st);
+              const ap = next.players.find((p)=> p.id === next.activePlayerId);
+              if (ap) ap.score += val * newCount;
+              return next;
+            });
+          }
         }
         elGuessInput.value = '';
         elGuessInput.focus();
@@ -699,9 +954,26 @@
         renderBonus(s);
         renderPuzzles(s);
         renderWheel(s);
+        renderShopAdmin(s);
+        renderResolvable(s);
       }
       renderAll(state.get());
       state.subscribe(renderAll);
+      // Build tools visibility toggle
+      (function initBuildToolsToggle(){
+        const KEY='wack-admin-tools-hidden';
+        function applyHidden(hidden){
+          document.body.classList.toggle('admin-tools-hidden', !!hidden);
+          if (elToggleBuild) elToggleBuild.textContent = hidden ? 'Show Build Tools' : 'Hide Build Tools';
+          try{ localStorage.setItem(KEY, hidden ? '1':'0'); }catch{}
+        }
+        let initHidden=false; try{ initHidden = localStorage.getItem(KEY)==='1'; }catch{}
+        applyHidden(initHidden);
+        if (elToggleBuild) elToggleBuild.addEventListener('click', ()=>{
+          const nowHidden = !document.body.classList.contains('admin-tools-hidden');
+          applyHidden(nowHidden);
+        });
+      })();
       elVowelCost.addEventListener('change', ()=> renderVowelSection(state.get()));
       elVowelPlayer.addEventListener('change', ()=> renderVowelSection(state.get()));
 
