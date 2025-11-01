@@ -236,6 +236,20 @@ export function revealLetter(state, letter) {
   return next;
 }
 
+export function revealAll(state) {
+  const next = deepClone(state);
+  const text = currentPuzzleText(next);
+  const uniq = new Set();
+  for (const ch of text) { if (/^[A-Z]$/.test(ch)) uniq.add(ch); }
+  const existingG = new Set(next.guessedLetters || []);
+  const existingR = new Set(next.revealedLetters || []);
+  for (const L of uniq) { existingG.add(L); existingR.add(L); }
+  next.guessedLetters = Array.from(existingG);
+  next.revealedLetters = Array.from(existingR);
+  next.ui = next.ui || {};
+  next.ui.lastReveal = { letter: "[ALL]", at: Date.now() };
+  return next;
+}
 export function buyVowel(state, playerId, vowel, cost) {
   const L = (vowel || '').toUpperCase();
   const price = Math.max(0, parseInt(cost, 10) || 0);
@@ -488,6 +502,7 @@ export function startSpin(state, desiredIndex = null) {
     spinning: true,
     resultIndex,
     resultLabel: slots[resultIndex]?.label ?? '',
+    resultOverride: null,
     finishedAt: null,
   };
   // Auto-show wheel view during spin
@@ -561,3 +576,13 @@ export function resolvePendingAction(state, actionId) {
   next.pendingActions = list.filter((_,i)=>i!==idx);
   return next;
 }
+
+
+export function setResultOverride(state, value) {
+  const next = deepClone(state);
+  next.wheelSpin = next.wheelSpin || {};
+  const v = parseInt(value, 10);
+  next.wheelSpin.resultOverride = Number.isFinite(v) ? v : null;
+  return next;
+}
+

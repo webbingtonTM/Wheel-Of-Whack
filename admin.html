@@ -190,6 +190,13 @@
 
       </aside>
       <main class="content">
+        <div class="section" id="quickControls">
+          <h3>Quick Controls</h3>
+          <div class="row" style="margin-bottom:6px;gap:10px">
+            <button id="spinWheelQuick" class="primary">Spin Wheel</button>
+            <button id="revealAllBtn">Reveal Puzzle</button>
+          </div>
+        </div>
         <div class="section" id="resolvableBox">
           <h3>Resolvable Actions</h3>
           <div class="row" style="margin-bottom:6px">
@@ -248,6 +255,9 @@
           <div class="row" style="margin-top:8px">
             <button id="spinWheel" class="primary">Spin Wheel</button>
             <span id="spinResult" style="color:var(--muted)"></span>
+            <label><span>Points per letter</span>
+              <input type="number" id="resultOverride" min="0" step="10" style="width:120px" />
+            </label>
           </div>
           <div id="slots" class="list" style="margin-top:8px"></div>
         </div>
@@ -285,6 +295,8 @@
         setShopStyle,
         addPendingAction,
         resolvePendingAction,
+              revealAll,
+              setResultOverride,
       } from './scripts/state.js';
 
       const state = new State();
@@ -314,6 +326,8 @@
       const elArrowOffset = document.getElementById('arrowOffset');
       const elArrowOffsetVal = document.getElementById('arrowOffsetVal');
       const elOpenBoard = document.getElementById('openBoard');
+      const elSpinWheelQuick = document.getElementById('spinWheelQuick');
+      const elRevealAll = document.getElementById('revealAllBtn');
       const elDelayedActions = document.getElementById('delayedActions');
       const elDelayedPoints = document.getElementById('delayedPoints');
       const elPendingCount = document.getElementById('pendingCount');
@@ -357,6 +371,7 @@
       const elSlots = document.getElementById('slots');
       const elSpinWheel = document.getElementById('spinWheel');
       const elSpinResult = document.getElementById('spinResult');
+      const elResultOverride = document.getElementById('resultOverride');
 
       function renderSettings(s) {
         elTransparent.checked = !!s.settings.transparentBg;
@@ -620,14 +635,19 @@
       function renderWheel(s) {
         elSlotCount.value = s.wheel.slots.length;
         elSlots.innerHTML = '';
+        if (typeof elResultOverride !== "undefined" && elResultOverride) {
+          const r = s.wheelSpin && (typeof s.wheelSpin.resultOverride !== "undefined") ? s.wheelSpin.resultOverride : NaN;
+          const base = parseInt(s.wheelSpin && s.wheelSpin.resultLabel ? s.wheelSpin.resultLabel : "", 10);
+          const eff = Number.isFinite(r) ? r : (Number.isFinite(base) ? base : "");
+          elResultOverride.value = eff === "" ? "" : String(eff);
+        }
         // Spin state/result
         if (s.wheelSpin?.spinning) {
           elSpinResult.textContent = 'Spinning...';
           elSpinWheel.disabled = true;
         } else if (s.wheelSpin?.resultLabel) {
           elSpinResult.textContent = `Result: ${s.wheelSpin.resultLabel}`;
-          elSpinWheel.disabled = false;
-        } else {
+          elSpinWheel.disabled = false; if (elResultOverride) { const r = s.wheelSpin && s.wheelSpin.resultOverride; const base = parseInt(s.wheelSpin && s.wheelSpin.resultLabel ? s.wheelSpin.resultLabel : '', 10); const eff = Number.isFinite(r) ? r : (Number.isFinite(base) ? base : ''); elResultOverride.value = eff === '' ? '' : String(eff); } } else {
           elSpinResult.textContent = '';
           elSpinWheel.disabled = false;
         }
@@ -818,9 +838,12 @@
         if (elPuzzleScaleVal) elPuzzleScaleVal.textContent = `${v.toFixed(2)}x`;
         state.set((s)=>{ const n = deepClone(s); n.settings.puzzleScale = v; return n; });
       });
+      if (elResultOverride) elResultOverride.addEventListener('input', ()=>{ const v = parseInt(elResultOverride.value||''); state.set(st=> setResultOverride(st, v)); });
       elVerticalLabels.addEventListener('change', () => {
         state.set((s)=>{ const n = deepClone(s); n.settings.wheelVerticalLabels = !!elVerticalLabels.checked; return n; });
       });
+      if (elSpinWheelQuick) elSpinWheelQuick.addEventListener('click', () => { const durationMs = 4500; state.set(st=> startSpin(st)); setTimeout(()=> state.set(st=> finishSpin(st)), durationMs + 50); });
+      if (elRevealAll) elRevealAll.addEventListener('click', () => { state.set(st => revealAll(st)); });
       elOpenBoard.addEventListener('click', () => {
         const sid = state.get().settings.sessionId;
         const url = sid ? `board.html?session=${encodeURIComponent(sid)}` : 'board.html';
@@ -851,10 +874,16 @@
         }
         // Apply reveal
         state.set((st)=> revealLetter(st, v));
+        // If no occurrences, emit miss event for Board overlay
+        if (newCount === 0) {
+          state.set(st => { const n = deepClone(st); n.ui = n.ui || {}; n.ui.lastMiss = { letter: v, at: Date.now() }; return n; });
+        }
         // Award points if last spin was numeric
         const spin = s.wheelSpin || {};
         const slot = (Array.isArray(s.wheel.slots) && Number.isInteger(spin.resultIndex)) ? (s.wheel.slots[spin.resultIndex] || {}) : {};
-        const val = parseInt(slot.label, 10);
+        const baseVal = parseInt(slot.label, 10);
+        const overrideVal = (s.wheelSpin && Number.isFinite(s.wheelSpin.resultOverride)) ? s.wheelSpin.resultOverride : NaN;
+        const val = Number.isFinite(overrideVal) ? overrideVal : baseVal;
         if (Number.isFinite(val) && newCount > 0) {
           const delayed = !!(s.settings && s.settings.delayScoringPoints);
           if (delayed) {
@@ -1008,4 +1037,16 @@
     </script>
   </body>
   </html>
+
+
+
+
+
+
+
+
+
+
+
+
 

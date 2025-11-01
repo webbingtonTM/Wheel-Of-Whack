@@ -41,9 +41,12 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .board-shell{height:100vh;display:flex;flex-direction:column}
 .board-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#0e1220;border-bottom:1px solid #2a2f45}
 .board-main{flex:1;display:grid;grid-template-columns:1fr var(--players-panel-width, 300px)}
-.puzzle-area{display:flex;align-items:center;justify-content:center}
+.puzzle-area{display:flex;align-items:center;justify-content:center;position:relative}
 .puzzle-grid{display:flex;flex-direction:column;gap:8px;max-width:1000px;justify-content:center}
 .puzzle-grid{transform: scale(var(--puzzle-scale, 1)); transform-origin:center}
+.miss-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;color:#ff6c6b;font-weight:900;font-size:min(22vmin, 240px);text-shadow:0 6px 18px rgba(0,0,0,.6);z-index:5}
+.miss-overlay.show{animation:missFade 900ms ease-out both}
+@keyframes missFade{0%{opacity:0;transform:scale(.8)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.1)}}
 .puzzle-row{display:flex;gap:8px;flex-wrap:nowrap;justify-content:center}
 .punct{font-weight:700;font-size:28px;color:var(--text);align-self:center}
 .space-gap{width:24px;}

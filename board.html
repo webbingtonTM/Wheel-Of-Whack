@@ -28,6 +28,7 @@
           <div class="view view-board">
             <section class="puzzle-area">
               <div class="puzzle-grid" id="puzzle"></div>
+              <div class="miss-overlay" id="missOverlay">X</div>
             </section>
           </div>
           <div class="view view-wheel">
@@ -71,6 +72,9 @@
       const elPicker = document.getElementById('sessionPicker');
       const elSessionSelect = document.getElementById('sessionSelect');
       const elLoadSessionBtn = document.getElementById('loadSessionBtn');
+      const elMiss = document.getElementById('missOverlay');
+      let lastMissSeenAt = 0;
+
 
       // Animation state for letter reveals
       let prevRevealed = new Set();
@@ -143,6 +147,19 @@
         }
         // Start with a short pre-reveal blue highlight
         scheduleNextStep(250);
+      }
+
+      function maybeShowMiss(s){
+        if (!s || !s.ui || !s.ui.lastMiss) return;
+        const at = parseInt(s.ui.lastMiss.at||0,10)||0;
+        if (!at || at <= lastMissSeenAt) return;
+        lastMissSeenAt = at;
+        if (elMiss){
+          elMiss.classList.remove('show');
+          void elMiss.offsetWidth;
+          elMiss.classList.add('show');
+          setTimeout(()=>{ if (elMiss) elMiss.classList.remove('show'); }, 950);
+        }
       }
 
       function measureTileWidth(){
@@ -483,9 +500,8 @@
           if (v) lastRevealSeenAt = parseInt(v,10) || 0;
         }
       } catch {}
-
       renderAll(state.get());
-      state.subscribe((s)=>{ maybeStartAnimation(s); renderAll(s); });
+      state.subscribe((s)=>{ maybeStartAnimation(s); maybeShowMiss(s); renderAll(s); });
 
       // Session selection on Board when no session specified in URL
       function refreshSessionOptions() {
@@ -515,4 +531,10 @@
     </script>
   </body>
   </html>
+
+
+
+
+
+
 
